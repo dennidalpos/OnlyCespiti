@@ -1,0 +1,232 @@
+namespace GestioneCespiti
+{
+    partial class MainForm
+    {
+        private System.ComponentModel.IContainer components = null!;
+        private System.Windows.Forms.MenuStrip menuStrip = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuFile = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuNewSheet = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuSave = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuExport = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuEdit = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuAddRow = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuRemoveRow = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuAddColumn = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuRemoveColumn = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuSheet = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuRenameSheet = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuArchiveSheet = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuViewArchived = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuDeleteSheet = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuTools = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuManageOptions = null!;
+        private System.Windows.Forms.ToolStripTextBox searchTextBox = null!;
+        private System.Windows.Forms.ToolStripButton searchButton = null!;
+        private System.Windows.Forms.ToolStripButton searchNextButton = null!;
+        private System.Windows.Forms.TabControl tabControl = null!;
+        private System.Windows.Forms.ToolStrip statusStrip = null!;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private void InitializeComponent()
+        {
+            this.menuStrip = new System.Windows.Forms.MenuStrip();
+            this.menuFile = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuNewSheet = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuSave = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuExport = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuEdit = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuAddRow = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuRemoveRow = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuAddColumn = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuRemoveColumn = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuSheet = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuRenameSheet = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuArchiveSheet = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuViewArchived = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuDeleteSheet = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuTools = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuManageOptions = new System.Windows.Forms.ToolStripMenuItem();
+            this.searchTextBox = new System.Windows.Forms.ToolStripTextBox();
+            this.searchButton = new System.Windows.Forms.ToolStripButton();
+            this.searchNextButton = new System.Windows.Forms.ToolStripButton();
+            this.tabControl = new System.Windows.Forms.TabControl();
+            this.statusStrip = new System.Windows.Forms.ToolStrip();
+            this.menuStrip.SuspendLayout();
+            this.SuspendLayout();
+
+            this.menuStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.menuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.menuFile,
+            this.menuEdit,
+            this.menuSheet,
+            this.menuTools,
+            this.searchTextBox,
+            this.searchButton,
+            this.searchNextButton});
+            this.menuStrip.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip.Name = "menuStrip";
+            this.menuStrip.Size = new System.Drawing.Size(1200, 28);
+            this.menuStrip.TabIndex = 0;
+
+            this.menuFile.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.menuNewSheet,
+            this.menuSave,
+            this.menuExport});
+            this.menuFile.Name = "menuFile";
+            this.menuFile.Size = new System.Drawing.Size(50, 24);
+            this.menuFile.Text = "File";
+
+            this.menuNewSheet.Name = "menuNewSheet";
+            this.menuNewSheet.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
+            this.menuNewSheet.Size = new System.Drawing.Size(250, 26);
+            this.menuNewSheet.Text = "Nuovo Foglio";
+            this.menuNewSheet.Click += new System.EventHandler(this.btnNewSheet_Click);
+
+            this.menuSave.Name = "menuSave";
+            this.menuSave.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
+            this.menuSave.Size = new System.Drawing.Size(250, 26);
+            this.menuSave.Text = "Salva";
+            this.menuSave.Click += new System.EventHandler(this.btnSave_Click);
+
+            this.menuExport.Name = "menuExport";
+            this.menuExport.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.E)));
+            this.menuExport.Size = new System.Drawing.Size(250, 26);
+            this.menuExport.Text = "Esporta in Excel";
+            this.menuExport.Click += new System.EventHandler(this.btnExport_Click);
+
+            this.menuEdit.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.menuAddRow,
+            this.menuRemoveRow,
+            this.menuAddColumn,
+            this.menuRemoveColumn});
+            this.menuEdit.Name = "menuEdit";
+            this.menuEdit.Size = new System.Drawing.Size(70, 24);
+            this.menuEdit.Text = "Modifica";
+
+            this.menuAddRow.Name = "menuAddRow";
+            this.menuAddRow.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.R)));
+            this.menuAddRow.Size = new System.Drawing.Size(250, 26);
+            this.menuAddRow.Text = "Aggiungi Riga";
+            this.menuAddRow.Click += new System.EventHandler(this.btnAddRow_Click);
+
+            this.menuRemoveRow.Name = "menuRemoveRow";
+            this.menuRemoveRow.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Delete)));
+            this.menuRemoveRow.Size = new System.Drawing.Size(250, 26);
+            this.menuRemoveRow.Text = "Rimuovi Riga";
+            this.menuRemoveRow.Click += new System.EventHandler(this.btnRemoveRow_Click);
+
+            this.menuAddColumn.Name = "menuAddColumn";
+            this.menuAddColumn.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.K)));
+            this.menuAddColumn.Size = new System.Drawing.Size(250, 26);
+            this.menuAddColumn.Text = "Aggiungi Colonna";
+            this.menuAddColumn.Click += new System.EventHandler(this.btnAddColumn_Click);
+
+            this.menuRemoveColumn.Name = "menuRemoveColumn";
+            this.menuRemoveColumn.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) | System.Windows.Forms.Keys.Delete)));
+            this.menuRemoveColumn.Size = new System.Drawing.Size(250, 26);
+            this.menuRemoveColumn.Text = "Rimuovi Colonna";
+            this.menuRemoveColumn.Click += new System.EventHandler(this.btnRemoveColumn_Click);
+
+            this.menuSheet.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.menuRenameSheet,
+            this.menuArchiveSheet,
+            this.menuViewArchived,
+            this.menuDeleteSheet});
+            this.menuSheet.Name = "menuSheet";
+            this.menuSheet.Size = new System.Drawing.Size(60, 24);
+            this.menuSheet.Text = "Foglio";
+
+            this.menuRenameSheet.Name = "menuRenameSheet";
+            this.menuRenameSheet.ShortcutKeys = System.Windows.Forms.Keys.F2;
+            this.menuRenameSheet.Size = new System.Drawing.Size(250, 26);
+            this.menuRenameSheet.Text = "Rinomina Foglio";
+            this.menuRenameSheet.Click += new System.EventHandler(this.btnRenameSheet_Click);
+
+            this.menuArchiveSheet.Name = "menuArchiveSheet";
+            this.menuArchiveSheet.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.A)));
+            this.menuArchiveSheet.Size = new System.Drawing.Size(250, 26);
+            this.menuArchiveSheet.Text = "Archivia Foglio";
+            this.menuArchiveSheet.Click += new System.EventHandler(this.btnArchiveSheet_Click);
+
+            this.menuViewArchived.Name = "menuViewArchived";
+            this.menuViewArchived.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.H)));
+            this.menuViewArchived.Size = new System.Drawing.Size(250, 26);
+            this.menuViewArchived.Text = "Visualizza Archiviati";
+            this.menuViewArchived.Click += new System.EventHandler(this.btnViewArchived_Click);
+
+            this.menuDeleteSheet.Name = "menuDeleteSheet";
+            this.menuDeleteSheet.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.D)));
+            this.menuDeleteSheet.Size = new System.Drawing.Size(250, 26);
+            this.menuDeleteSheet.Text = "Elimina Foglio";
+            this.menuDeleteSheet.Click += new System.EventHandler(this.btnDeleteSheet_Click);
+
+            this.menuTools.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.menuManageOptions});
+            this.menuTools.Name = "menuTools";
+            this.menuTools.Size = new System.Drawing.Size(80, 24);
+            this.menuTools.Text = "Strumenti";
+
+            this.menuManageOptions.Name = "menuManageOptions";
+            this.menuManageOptions.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
+            this.menuManageOptions.Size = new System.Drawing.Size(250, 26);
+            this.menuManageOptions.Text = "Gestisci Opzioni";
+            this.menuManageOptions.Click += new System.EventHandler(this.btnManageOptions_Click);
+
+            this.searchTextBox.Name = "searchTextBox";
+            this.searchTextBox.Size = new System.Drawing.Size(200, 28);
+            this.searchTextBox.ToolTipText = "Cerca in tutti i fogli";
+            this.searchTextBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.searchTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.searchTextBox_KeyDown);
+
+            this.searchButton.Name = "searchButton";
+            this.searchButton.Text = "Cerca";
+            this.searchButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.searchButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.searchButton.Click += new System.EventHandler(this.searchButton_Click);
+
+            this.searchNextButton.Name = "searchNextButton";
+            this.searchNextButton.Text = "Continua";
+            this.searchNextButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.searchNextButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.searchNextButton.Visible = false;
+            this.searchNextButton.Click += new System.EventHandler(this.searchNextButton_Click);
+
+            this.statusStrip.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.statusStrip.Location = new System.Drawing.Point(0, 572);
+            this.statusStrip.Name = "statusStrip";
+            this.statusStrip.Size = new System.Drawing.Size(1200, 28);
+            this.statusStrip.TabIndex = 2;
+
+            this.tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabControl.Location = new System.Drawing.Point(0, 28);
+            this.tabControl.Name = "tabControl";
+            this.tabControl.SelectedIndex = 0;
+            this.tabControl.Size = new System.Drawing.Size(1200, 544);
+            this.tabControl.TabIndex = 1;
+
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(1200, 600);
+            this.Controls.Add(this.tabControl);
+            this.Controls.Add(this.statusStrip);
+            this.Controls.Add(this.menuStrip);
+            this.MainMenuStrip = this.menuStrip;
+            this.Name = "MainForm";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "Gestione Cespiti - Dismissioni";
+            this.menuStrip.ResumeLayout(false);
+            this.menuStrip.PerformLayout();
+            this.ResumeLayout(false);
+            this.PerformLayout();
+        }
+    }
+}
