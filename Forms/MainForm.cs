@@ -86,6 +86,7 @@ namespace GestioneCespiti
             {
                 searchNextButton.Visible = false;
                 searchTextBox.BackColor = SystemColors.Window;
+                _statusManager?.UpdateStatus("Nessun risultato trovato", Color.Gray);
             }
         }
 
@@ -257,7 +258,15 @@ namespace GestioneCespiti
 
         private void searchNextButton_Click(object? sender, EventArgs e)
         {
-            _searchManager?.NavigateNext();
+            bool moved = _searchManager?.NavigateNext() ?? false;
+            if (!moved && _searchManager?.HasResults == true)
+            {
+                _statusManager?.UpdateStatus("Nessun'altra occorrenza trovata", Color.Gray);
+            }
+            else if (!moved)
+            {
+                _statusManager?.UpdateStatus("Esegui prima una ricerca", Color.Gray);
+            }
         }
 
         private void NavigateToSearchResult(SearchResult result)
@@ -941,6 +950,14 @@ namespace GestioneCespiti
                         MessageBox.Show($"Errore durante il salvataggio:\n{ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
+            }
+        }
+
+        private void menuAbout_Click(object? sender, EventArgs e)
+        {
+            using (var aboutDialog = new AboutDialog())
+            {
+                aboutDialog.ShowDialog(this);
             }
         }
     }
