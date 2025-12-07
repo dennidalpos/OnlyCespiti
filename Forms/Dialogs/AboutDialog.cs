@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
@@ -12,11 +13,15 @@ namespace GestioneCespiti.Forms.Dialogs
             var assembly = Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
             var productName = "GestioneCespiti - Dismissioni";
-            var company = "Developed by Claude AI Assistant";
+            var githubUsername = Environment.GetEnvironmentVariable("GITHUB_USERNAME")
+                                  ?? Environment.UserName;
+            var projectUrl = Environment.GetEnvironmentVariable("GITHUB_PROJECT_URL")
+                             ?? $"https://github.com/{githubUsername}/OnlyCespiti";
+            var company = $"Sviluppato da {githubUsername}";
             var copyright = $"© {DateTime.Now.Year} - Tutti i diritti riservati";
 
             Text = "Informazioni su";
-            Size = new Size(450, 320);
+            ClientSize = new Size(500, 380);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -26,7 +31,7 @@ namespace GestioneCespiti.Forms.Dialogs
             {
                 Text = "📊",
                 Font = new Font("Segoe UI", 48, FontStyle.Regular),
-                Location = new Point(180, 20),
+                Location = new Point((ClientSize.Width - 100) / 2, 20),
                 Size = new Size(100, 80),
                 TextAlign = ContentAlignment.MiddleCenter
             };
@@ -36,7 +41,7 @@ namespace GestioneCespiti.Forms.Dialogs
                 Text = productName,
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 Location = new Point(20, 110),
-                Size = new Size(410, 30),
+                Size = new Size(ClientSize.Width - 40, 30),
                 TextAlign = ContentAlignment.MiddleCenter
             };
 
@@ -45,7 +50,7 @@ namespace GestioneCespiti.Forms.Dialogs
                 Text = $"Versione {version?.Major}.{version?.Minor}.{version?.Build}",
                 Font = new Font("Segoe UI", 10, FontStyle.Regular),
                 Location = new Point(20, 145),
-                Size = new Size(410, 25),
+                Size = new Size(ClientSize.Width - 40, 25),
                 TextAlign = ContentAlignment.MiddleCenter,
                 ForeColor = Color.DarkGray
             };
@@ -54,17 +59,45 @@ namespace GestioneCespiti.Forms.Dialogs
             {
                 Text = company,
                 Font = new Font("Segoe UI", 9, FontStyle.Regular),
-                Location = new Point(20, 180),
-                Size = new Size(410, 25),
+                Location = new Point(20, 175),
+                Size = new Size(ClientSize.Width - 40, 25),
                 TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            var githubLink = new LinkLabel
+            {
+                Text = projectUrl,
+                Font = new Font("Segoe UI", 9, FontStyle.Underline),
+                Location = new Point(20, 200),
+                Size = new Size(ClientSize.Width - 40, 20),
+                TextAlign = ContentAlignment.MiddleCenter,
+                LinkBehavior = LinkBehavior.HoverUnderline
+            };
+
+            githubLink.Links.Add(0, projectUrl.Length, projectUrl);
+            githubLink.LinkClicked += (s, e) =>
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = projectUrl,
+                        UseShellExecute = true
+                    });
+                }
+                catch
+                {
+                    Clipboard.SetText(projectUrl);
+                    MessageBox.Show("Link copiato negli appunti", "Informazioni", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             };
 
             var copyrightLabel = new Label
             {
                 Text = copyright,
                 Font = new Font("Segoe UI", 8, FontStyle.Regular),
-                Location = new Point(20, 205),
-                Size = new Size(410, 20),
+                Location = new Point(20, 225),
+                Size = new Size(ClientSize.Width - 40, 20),
                 TextAlign = ContentAlignment.MiddleCenter,
                 ForeColor = Color.Gray
             };
@@ -73,8 +106,8 @@ namespace GestioneCespiti.Forms.Dialogs
             {
                 Text = "Sistema di gestione cespiti e dismissioni\ncon supporto archiviazione ed export Excel",
                 Font = new Font("Segoe UI", 9, FontStyle.Italic),
-                Location = new Point(20, 230),
-                Size = new Size(410, 35),
+                Location = new Point(20, 250),
+                Size = new Size(ClientSize.Width - 40, 40),
                 TextAlign = ContentAlignment.MiddleCenter,
                 ForeColor = Color.DimGray
             };
@@ -83,16 +116,18 @@ namespace GestioneCespiti.Forms.Dialogs
             {
                 Text = "OK",
                 DialogResult = DialogResult.OK,
-                Location = new Point(175, 240),
-                Size = new Size(100, 30),
+                Size = new Size(120, 32),
                 Font = new Font("Segoe UI", 9, FontStyle.Regular)
             };
+
+            btnOk.Location = new Point((ClientSize.Width - btnOk.Width) / 2, ClientSize.Height - btnOk.Height - 20);
 
             Controls.AddRange(new Control[] {
                 logoLabel,
                 titleLabel,
                 versionLabel,
                 companyLabel,
+                githubLink,
                 copyrightLabel,
                 descriptionLabel,
                 btnOk
