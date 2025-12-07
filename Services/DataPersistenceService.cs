@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using GestioneCespiti.Models;
+using GestioneCespiti.Utils;
 using Newtonsoft.Json;
 
 namespace GestioneCespiti.Services
@@ -13,22 +14,17 @@ namespace GestioneCespiti.Services
     {
         private readonly string _dataFolder;
         private readonly string _archivedFolder;
+        private static readonly Regex InvalidCharsRegex = new Regex(@"[^\w\s-]", RegexOptions.Compiled);
+        private static readonly Regex WhitespaceRegex = new Regex(@"\s+", RegexOptions.Compiled);
 
         public DataPersistenceService()
         {
             string exePath = AppDomain.CurrentDomain.BaseDirectory;
-            _dataFolder = Path.Combine(exePath, "data");
-            _archivedFolder = Path.Combine(_dataFolder, "archived");
+            _dataFolder = Path.GetFullPath(Path.Combine(exePath, "data"));
+            _archivedFolder = Path.GetFullPath(Path.Combine(_dataFolder, "archived"));
 
-            if (!Directory.Exists(_dataFolder))
-            {
-                Directory.CreateDirectory(_dataFolder);
-            }
-
-            if (!Directory.Exists(_archivedFolder))
-            {
-                Directory.CreateDirectory(_archivedFolder);
-            }
+            PathValidator.EnsureDirectoryExists(_dataFolder);
+            PathValidator.EnsureDirectoryExists(_archivedFolder);
         }
 
         public List<AssetSheet> LoadAllSheets(bool includeArchived = false)
@@ -124,7 +120,7 @@ namespace GestioneCespiti.Services
             }
 
             string targetFolder = sheet.IsArchived ? _archivedFolder : _dataFolder;
-            string filePath = Path.Combine(targetFolder, sheet.FileName);
+            string filePath = PathValidator.ValidateAndGetSafePath(targetFolder, sheet.FileName);
 
             try
             {
@@ -160,7 +156,7 @@ namespace GestioneCespiti.Services
                 return;
 
             string targetFolder = sheet.IsArchived ? _archivedFolder : _dataFolder;
-            string filePath = Path.Combine(targetFolder, sheet.FileName);
+            string filePath = PathValidator.ValidateAndGetSafePath(targetFolder, sheet.FileName);
             
             try
             {
@@ -186,7 +182,7 @@ namespace GestioneCespiti.Services
             if (sheet == null || sheet.IsArchived)
                 return;
 
-            string sourcePath = Path.Combine(_dataFolder, sheet.FileName);
+            string sourcePath = PathValidator.ValidateAndGetSafePath(_dataFolder, sheet.FileName);
 
             if (!File.Exists(sourcePath))
             {
@@ -215,7 +211,7 @@ namespace GestioneCespiti.Services
             if (sheet == null || !sheet.IsArchived)
                 return;
 
-            string sourcePath = Path.Combine(_archivedFolder, sheet.FileName);
+            string sourcePath = PathValidator.ValidateAndGetSafePath(_archivedFolder, sheet.FileName);
 
             if (!File.Exists(sourcePath))
             {
@@ -269,8 +265,8 @@ namespace GestioneCespiti.Services
             if (string.IsNullOrWhiteSpace(input))
                 input = "foglio";
 
-            string safe = Regex.Replace(input, @"[^\w\s-]", "");
-            safe = Regex.Replace(safe, @"\s+", "_");
+            string safe = InvalidCharsRegex.Replace(input, "");
+            safe = WhitespaceRegex.Replace(safe, "_");
 
             if (safe.Length > 50)
                 safe = safe.Substring(0, 50);
