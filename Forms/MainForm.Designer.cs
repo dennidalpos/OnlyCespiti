@@ -36,6 +36,10 @@ namespace GestioneCespiti
         private System.Windows.Forms.ToolStripMenuItem menuManageColumns = null!;
         private System.Windows.Forms.ToolStripMenuItem menuManageCauseDismissione = null!;
 
+        // Menu Aiuto
+        private System.Windows.Forms.ToolStripMenuItem menuHelp = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuAbout = null!;
+
         // Ricerca
         private System.Windows.Forms.ToolStripTextBox searchTextBox = null!;
         private System.Windows.Forms.ToolStripButton searchButton = null!;
@@ -89,6 +93,10 @@ namespace GestioneCespiti
             this.menuManageColumns = new System.Windows.Forms.ToolStripMenuItem();
             this.menuManageCauseDismissione = new System.Windows.Forms.ToolStripMenuItem();
 
+            // Menu Aiuto
+            this.menuHelp = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuAbout = new System.Windows.Forms.ToolStripMenuItem();
+
             // Ricerca
             this.searchTextBox = new System.Windows.Forms.ToolStripTextBox();
             this.searchButton = new System.Windows.Forms.ToolStripButton();
@@ -110,6 +118,7 @@ namespace GestioneCespiti
                 this.menuSheet,
                 this.menuArchive,
                 this.menuTools,
+                this.menuHelp,
                 this.searchTextBox,
                 this.searchButton,
                 this.searchNextButton
@@ -252,24 +261,43 @@ namespace GestioneCespiti
 
             this.menuManageColumns.DropDownItems.Add(this.menuManageCauseDismissione);
 
+            // Menu Aiuto
+            this.menuHelp.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+                this.menuAbout
+            });
+            this.menuHelp.Name = "menuHelp";
+            this.menuHelp.Size = new System.Drawing.Size(24, 24);
+            this.menuHelp.Text = "?";
+
+            this.menuAbout.Name = "menuAbout";
+            this.menuAbout.ShortcutKeys = System.Windows.Forms.Keys.F1;
+            this.menuAbout.Size = new System.Drawing.Size(250, 26);
+            this.menuAbout.Text = "Informazioni su...";
+            this.menuAbout.Click += new System.EventHandler(this.menuAbout_Click);
+
             // Ricerca
             this.searchTextBox.Name = "searchTextBox";
             this.searchTextBox.Size = new System.Drawing.Size(200, 28);
             this.searchTextBox.ToolTipText = "Cerca in tutti i fogli (Invio per cercare/successivo)";
             this.searchTextBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.searchTextBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.searchTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.searchTextBox_KeyDown);
 
             this.searchButton.Name = "searchButton";
-            this.searchButton.Text = "Cerca";
+            this.searchButton.Text = "🔍 Cerca";
             this.searchButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
             this.searchButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.searchButton.BackColor = System.Drawing.Color.LightBlue;
             this.searchButton.Click += new System.EventHandler(this.searchButton_Click);
 
             this.searchNextButton.Name = "searchNextButton";
-            this.searchNextButton.Text = "►";
+            this.searchNextButton.Text = "▶";
+            this.searchNextButton.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.searchNextButton.ToolTipText = "Risultato successivo";
             this.searchNextButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
             this.searchNextButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.searchNextButton.BackColor = System.Drawing.Color.LightGreen;
+            this.searchNextButton.ForeColor = System.Drawing.Color.DarkGreen;
             this.searchNextButton.Visible = false;
             this.searchNextButton.Click += new System.EventHandler(this.searchNextButton_Click);
 
