@@ -89,7 +89,7 @@ namespace GestioneCespiti
             }
         }
 
-        private void SearchManager_NavigateRequested(object? sender, NavigateEventArgs e)
+        private void SearchManager_NavigateRequested(object? sender, SearchNavigateEventArgs e)
         {
             NavigateToSearchResult(e.Result);
             if (_searchManager != null)
