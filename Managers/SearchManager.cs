@@ -74,16 +74,15 @@ namespace GestioneCespiti.Managers
             if (_searchResults.Count == 0)
                 return false;
 
-            _currentSearchIndex++;
-            bool wrapped = false;
-            if (_currentSearchIndex >= _searchResults.Count)
+            if (_currentSearchIndex + 1 >= _searchResults.Count)
             {
-                _currentSearchIndex = 0;
-                wrapped = true;
+                MessageBox.Show("Non ci sono altre ricorrenze.", "Ricerca", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
             }
 
+            _currentSearchIndex++;
             NavigateRequested?.Invoke(this, new SearchNavigateEventArgs(_searchResults[_currentSearchIndex]));
-            return wrapped;
+            return true;
         }
 
         public int CurrentIndex => _currentSearchIndex;

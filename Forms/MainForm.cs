@@ -257,7 +257,11 @@ namespace GestioneCespiti
 
         private void searchNextButton_Click(object? sender, EventArgs e)
         {
-            _searchManager?.NavigateNext();
+            bool moved = _searchManager?.NavigateNext() ?? false;
+            if (!moved && _searchManager?.HasResults == true)
+            {
+                _statusManager?.UpdateStatus("Nessun'altra occorrenza trovata", Color.Gray);
+            }
         }
 
         private void NavigateToSearchResult(SearchResult result)
