@@ -17,33 +17,4 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="Program.cs" />
-    <Compile Include="Forms\MainForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\MainForm.Designer.cs">
-      <DependentUpon>MainForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Dialogs\InputDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Dialogs\OptionsDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Dialogs\ArchiveDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Models\Asset.cs" />
-    <Compile Include="Models\AssetSheet.cs" />
-    <Compile Include="Models\AppSettings.cs" />
-    <Compile Include="Models\AppLock.cs" />
-    <Compile Include="Models\SearchResult.cs" />
-    <Compile Include="Services\DataPersistenceService.cs" />
-    <Compile Include="Services\ExcelExportService.cs" />
-    <Compile Include="Services\SettingsService.cs" />
-    <Compile Include="Services\LockService.cs" />
-    <Compile Include="Services\Logger.cs" />
-  </ItemGroup>
-
 </Project>
