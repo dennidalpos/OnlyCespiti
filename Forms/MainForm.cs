@@ -943,5 +943,13 @@ namespace GestioneCespiti
                 }
             }
         }
+
+        private void menuAbout_Click(object? sender, EventArgs e)
+        {
+            using (var aboutDialog = new AboutDialog())
+            {
+                aboutDialog.ShowDialog(this);
+            }
+        }
     }
 }
