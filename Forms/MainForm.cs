@@ -86,6 +86,7 @@ namespace GestioneCespiti
             {
                 searchNextButton.Visible = false;
                 searchTextBox.BackColor = SystemColors.Window;
+                _statusManager?.UpdateStatus("Nessun risultato trovato", Color.Gray);
             }
         }
 
@@ -261,6 +262,10 @@ namespace GestioneCespiti
             if (!moved && _searchManager?.HasResults == true)
             {
                 _statusManager?.UpdateStatus("Nessun'altra occorrenza trovata", Color.Gray);
+            }
+            else if (!moved)
+            {
+                _statusManager?.UpdateStatus("Esegui prima una ricerca", Color.Gray);
             }
         }
 

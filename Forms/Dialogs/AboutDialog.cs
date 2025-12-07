@@ -10,12 +10,27 @@ namespace GestioneCespiti.Forms.Dialogs
     {
         public AboutDialog()
         {
+            const string defaultGithubUsername = "TuoUsernameGitHub";
+            const string defaultProjectUrl = "https://github.com/TuoUsernameGitHub/OnlyCespiti";
+
             var assembly = Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
             var productName = "GestioneCespiti - Dismissioni";
-            var username = Environment.UserName;
-            var company = $"Sviluppato da {username}";
-            var githubUrl = $"https://github.com/{username}";
+            var githubUsername = Environment.GetEnvironmentVariable("GITHUB_USERNAME");
+            var projectUrl = Environment.GetEnvironmentVariable("GITHUB_PROJECT_URL");
+
+            if (string.IsNullOrWhiteSpace(githubUsername))
+            {
+                githubUsername = defaultGithubUsername;
+            }
+
+            if (string.IsNullOrWhiteSpace(projectUrl))
+            {
+                projectUrl = githubUsername != defaultGithubUsername
+                    ? $"https://github.com/{githubUsername}/OnlyCespiti"
+                    : defaultProjectUrl;
+            }
+            var company = $"Sviluppato da {githubUsername}";
             var copyright = $"© {DateTime.Now.Year} - Tutti i diritti riservati";
 
             Text = "Informazioni su";
@@ -64,7 +79,7 @@ namespace GestioneCespiti.Forms.Dialogs
 
             var githubLink = new LinkLabel
             {
-                Text = githubUrl,
+                Text = projectUrl,
                 Font = new Font("Segoe UI", 9, FontStyle.Underline),
                 Location = new Point(20, 200),
                 Size = new Size(ClientSize.Width - 40, 20),
@@ -72,20 +87,20 @@ namespace GestioneCespiti.Forms.Dialogs
                 LinkBehavior = LinkBehavior.HoverUnderline
             };
 
-            githubLink.Links.Add(0, githubUrl.Length, githubUrl);
+            githubLink.Links.Add(0, projectUrl.Length, projectUrl);
             githubLink.LinkClicked += (s, e) =>
             {
                 try
                 {
                     Process.Start(new ProcessStartInfo
                     {
-                        FileName = githubUrl,
+                        FileName = projectUrl,
                         UseShellExecute = true
                     });
                 }
                 catch
                 {
-                    Clipboard.SetText(githubUrl);
+                    Clipboard.SetText(projectUrl);
                     MessageBox.Show("Link copiato negli appunti", "Informazioni", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             };
