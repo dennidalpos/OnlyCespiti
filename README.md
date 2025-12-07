@@ -127,18 +127,34 @@ I dati vengono salvati nella cartella `data/` nella directory dell'eseguibile:
 ## Compilazione
 
 ### Requisiti
-- .NET 8.0 SDK
+- .NET 8.0 SDK o superiore
 - Windows OS (per Windows Forms)
+- Visual Studio 2022 (opzionale, consigliato)
 
-### Build da riga di comando
+### Metodo 1: Visual Studio (Consigliato)
+1. Apri il file `GestioneCespiti.sln` con Visual Studio 2022
+2. Premi F5 per compilare ed eseguire
+3. Oppure usa Build → Build Solution (Ctrl+Shift+B)
+
+### Metodo 2: Command Line
 ```bash
+# Dalla directory OnlyCespiti
+dotnet restore
 dotnet build
+dotnet run
 ```
 
-### Build con PowerShell
+### Metodo 3: PowerShell Script
 ```powershell
+# Dalla directory OnlyCespiti
 .\Scripts\build.ps1
 ```
+
+### Risoluzione Problemi
+Se ricevi errore "non contiene alcun file di progetto o di soluzione":
+- Assicurati di essere nella directory `OnlyCespiti`
+- Verifica che esistano `GestioneCespiti.sln` e `GestioneCespiti.csproj`
+- Usa il percorso completo: `dotnet build C:\percorso\OnlyCespiti\GestioneCespiti.sln`
 
 ## Note di Sviluppo
 
