@@ -41,15 +41,23 @@ namespace GestioneCespiti.Services
             {
                 try
                 {
-                    string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}] {message}";
-                    
+                    var sb = new StringBuilder();
+                    sb.AppendFormat("{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}", DateTime.Now, level, message);
+
                     if (ex != null)
                     {
-                        logEntry += $"\nException: {ex.GetType().Name}: {ex.Message}";
-                        logEntry += $"\nStackTrace: {ex.StackTrace}";
+                        sb.AppendLine()
+                          .Append("Exception: ")
+                          .Append(ex.GetType().Name)
+                          .Append(": ")
+                          .Append(ex.Message)
+                          .AppendLine()
+                          .Append("StackTrace: ")
+                          .Append(ex.StackTrace);
                     }
 
-                    File.AppendAllText(_logFile, logEntry + "\n", Encoding.UTF8);
+                    sb.AppendLine();
+                    File.AppendAllText(_logFile, sb.ToString(), Encoding.UTF8);
 
                     FileInfo fileInfo = new FileInfo(_logFile);
                     if (fileInfo.Exists && fileInfo.Length > 10 * 1024 * 1024)

@@ -40,67 +40,79 @@ namespace GestioneCespiti.Services
 
         private bool TryAcquireLockInternal(int retryCount)
         {
+            FileStream? fs = null;
             try
             {
-                using (FileStream fs = new FileStream(_lockFile, 
+                fs = new FileStream(_lockFile,
                     FileMode.CreateNew,
-                    FileAccess.Write, 
-                    FileShare.None))
-                {
-                    var lockData = new AppLock
-                    {
-                        UserName = _currentUserName,
-                        HostName = _currentHostName,
-                        LockTime = DateTime.Now,
-                        ProcessId = _currentProcessId
-                    };
+                    FileAccess.Write,
+                    FileShare.None);
 
-                    string json = JsonConvert.SerializeObject(lockData, Formatting.Indented);
-                    using (StreamWriter writer = new StreamWriter(fs, Encoding.UTF8))
-                    {
-                        writer.Write(json);
-                    }
+                var lockData = new AppLock
+                {
+                    UserName = _currentUserName,
+                    HostName = _currentHostName,
+                    LockTime = DateTime.Now,
+                    ProcessId = _currentProcessId
+                };
+
+                string json = JsonConvert.SerializeObject(lockData, Formatting.Indented);
+                using (StreamWriter writer = new StreamWriter(fs, Encoding.UTF8))
+                {
+                    writer.Write(json);
+                    writer.Flush();
                 }
-                
+
+                fs.Dispose();
+                fs = null;
+
                 Logger.LogInfo($"Lock acquisito: {_currentUserName}@{_currentHostName} (PID: {_currentProcessId})");
                 return true;
             }
             catch (IOException)
             {
-                var existingLock = GetCurrentLock();
-                
-                if (existingLock != null)
+                fs?.Dispose();
+
+                if (retryCount >= MaxRetries)
                 {
-                    if (!IsProcessStillRunning(existingLock.ProcessId))
-                    {
-                        Logger.LogWarning($"Lock stale trovato (processo {existingLock.ProcessId} non più attivo). Rimozione...");
-                        
-                        try
-                        {
-                            File.Delete(_lockFile);
-                            
-                            if (retryCount < MaxRetries)
-                            {
-                                System.Threading.Thread.Sleep(RetryDelayMs * (retryCount + 1));
-                                return TryAcquireLockInternal(retryCount + 1);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.LogError("Errore rimozione lock stale", ex);
-                            return false;
-                        }
-                    }
-                    else
+                    var existingLock = GetCurrentLock();
+                    if (existingLock != null)
                     {
                         Logger.LogInfo($"Lock già attivo: {existingLock.UserName}@{existingLock.HostName} dal {existingLock.LockTime}");
                     }
+                    return false;
                 }
-                
+
+                System.Threading.Thread.Sleep(RetryDelayMs);
+
+                if (!File.Exists(_lockFile))
+                {
+                    return TryAcquireLockInternal(retryCount + 1);
+                }
+
+                var currentLock = GetCurrentLock();
+                if (currentLock != null && !IsProcessStillRunning(currentLock.ProcessId))
+                {
+                    Logger.LogWarning($"Lock stale trovato (processo {currentLock.ProcessId} non più attivo). Rimozione...");
+
+                    try
+                    {
+                        File.Delete(_lockFile);
+                        System.Threading.Thread.Sleep(RetryDelayMs);
+                        return TryAcquireLockInternal(retryCount + 1);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError("Errore rimozione lock stale", ex);
+                        return false;
+                    }
+                }
+
                 return false;
             }
             catch (Exception ex)
             {
+                fs?.Dispose();
                 Logger.LogError("Errore durante acquisizione lock", ex);
                 return false;
             }

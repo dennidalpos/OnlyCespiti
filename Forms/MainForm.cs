@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using GestioneCespiti.Models;
 using GestioneCespiti.Services;
 using GestioneCespiti.Forms.Dialogs;
+using GestioneCespiti.Managers;
 
 namespace GestioneCespiti
 {
@@ -21,11 +22,11 @@ namespace GestioneCespiti
         private bool _isReadOnly;
         private System.Threading.Timer? _saveTimer;
         private readonly object _saveLock = new object();
-        private ToolStripLabel? _statusLabel;
-        private System.Windows.Forms.Timer? _statusTimer;
 
-        private List<SearchResult> _searchResults = new List<SearchResult>();
-        private int _currentSearchIndex = -1;
+        private SearchManager? _searchManager;
+        private GridManager? _gridManager;
+        private StatusManager? _statusManager;
+
         private bool _hasUnsavedChanges = false;
 
         public MainForm()
@@ -37,8 +38,8 @@ namespace GestioneCespiti
             _lockService = new LockService();
             _appSettings = _settingsService.LoadSettings();
 
-            InitializeStatusLabel();
             CheckApplicationLock();
+            InitializeManagers();
             LoadAllSheets();
 
             if (tabControl?.TabCount == 0 && !_isReadOnly)
@@ -49,14 +50,52 @@ namespace GestioneCespiti
             UpdateUIForReadOnlyMode();
         }
 
-        private void InitializeStatusLabel()
+        private void InitializeManagers()
         {
-            _statusLabel = new ToolStripLabel
+            _statusManager = new StatusManager(statusStrip, this);
+            _searchManager = new SearchManager(_persistenceService);
+            _gridManager = new GridManager(_appSettings, _isReadOnly);
+
+            _searchManager.SearchCompleted += SearchManager_SearchCompleted;
+            _searchManager.NavigateRequested += SearchManager_NavigateRequested;
+            _gridManager.CellValueChanged += GridManager_CellValueChanged;
+        }
+
+        private void GridManager_CellValueChanged(object? sender, CellValueChangedEventArgs e)
+        {
+            e.Sheet.Rows[e.RowIndex][e.ColumnName] = e.NewValue;
+            _hasUnsavedChanges = true;
+
+            lock (_saveLock)
             {
-                Text = "Pronto",
-                Alignment = ToolStripItemAlignment.Left
-            };
-            statusStrip.Items.Add(_statusLabel);
+                _saveTimer?.Dispose();
+                _saveTimer = null;
+                _saveTimer = new System.Threading.Timer(SaveTimerCallback, e.Sheet, 2000, Timeout.Infinite);
+            }
+        }
+
+        private void SearchManager_SearchCompleted(object? sender, SearchCompletedEventArgs e)
+        {
+            if (e.HasResults)
+            {
+                searchNextButton.Visible = e.ResultCount > 1;
+                _statusManager?.UpdateStatus($"Trovati {e.ResultCount} risultati (1/{e.ResultCount})", Color.Blue);
+                searchTextBox.BackColor = Color.LightYellow;
+            }
+            else
+            {
+                searchNextButton.Visible = false;
+                searchTextBox.BackColor = SystemColors.Window;
+            }
+        }
+
+        private void SearchManager_NavigateRequested(object? sender, NavigateEventArgs e)
+        {
+            NavigateToSearchResult(e.Result);
+            if (_searchManager != null)
+            {
+                _statusManager?.UpdateStatus($"Risultato {_searchManager.CurrentIndex + 1}/{_searchManager.TotalResults}", Color.Blue);
+            }
         }
 
         private void CheckApplicationLock()
@@ -130,36 +169,10 @@ namespace GestioneCespiti
 
                 if (result == DialogResult.Yes)
                 {
-                    bool allSaved = true;
-                    var errors = new List<string>();
-
-                    foreach (TabPage tab in tabControl.TabPages)
+                    if (!SaveAllSheets())
                     {
-                        if (tab.Tag is AssetSheet sheet)
-                        {
-                            try
-                            {
-                                _persistenceService.SaveSheet(sheet);
-                                Logger.LogInfo($"Foglio '{sheet.Header}' salvato alla chiusura");
-                            }
-                            catch (Exception ex)
-                            {
-                                allSaved = false;
-                                string error = $"Foglio '{sheet.Header}': {ex.Message}";
-                                errors.Add(error);
-                                Logger.LogError($"Errore salvataggio '{sheet.Header}' alla chiusura", ex);
-                            }
-                        }
-                    }
-
-                    if (!allSaved)
-                    {
-                        string errorMessage = "Attenzione: alcuni fogli non sono stati salvati:\n\n" +
-                                            string.Join("\n", errors) +
-                                            "\n\nVuoi comunque chiudere l'applicazione?";
-
                         var confirmResult = MessageBox.Show(
-                            errorMessage,
+                            "Alcuni fogli non sono stati salvati.\n\nVuoi comunque chiudere l'applicazione?",
                             "Errori di Salvataggio",
                             MessageBoxButtons.YesNo,
                             MessageBoxIcon.Warning);
@@ -180,12 +193,7 @@ namespace GestioneCespiti
                 _saveTimer = null;
             }
 
-            if (_statusTimer != null)
-            {
-                _statusTimer.Stop();
-                _statusTimer.Dispose();
-                _statusTimer = null;
-            }
+            _statusManager?.Dispose();
 
             if (!_isReadOnly)
             {
@@ -197,13 +205,40 @@ namespace GestioneCespiti
             base.OnFormClosing(e);
         }
 
+        private bool SaveAllSheets()
+        {
+            bool allSaved = true;
+            var errors = new List<string>();
+
+            foreach (TabPage tab in tabControl.TabPages)
+            {
+                if (tab.Tag is AssetSheet sheet)
+                {
+                    try
+                    {
+                        _persistenceService.SaveSheet(sheet);
+                        Logger.LogInfo($"Foglio '{sheet.Header}' salvato alla chiusura");
+                    }
+                    catch (Exception ex)
+                    {
+                        allSaved = false;
+                        string error = $"Foglio '{sheet.Header}': {ex.Message}";
+                        errors.Add(error);
+                        Logger.LogError($"Errore salvataggio '{sheet.Header}' alla chiusura", ex);
+                    }
+                }
+            }
+
+            return allSaved;
+        }
+
         private void searchTextBox_KeyDown(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
 
-                if (_searchResults.Count > 0)
+                if (_searchManager?.HasResults == true)
                 {
                     searchNextButton_Click(sender, e);
                 }
@@ -217,77 +252,12 @@ namespace GestioneCespiti
         private void searchButton_Click(object? sender, EventArgs e)
         {
             string searchText = searchTextBox.Text?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrEmpty(searchText))
-            {
-                MessageBox.Show("Inserisci un testo da cercare.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            searchTextBox.BackColor = Color.LightYellow;
-
-            _searchResults.Clear();
-            _currentSearchIndex = -1;
-
-            var allSheets = _persistenceService.LoadAllSheets(true);
-
-            foreach (var sheet in allSheets)
-            {
-                for (int rowIndex = 0; rowIndex < sheet.Rows.Count; rowIndex++)
-                {
-                    var asset = sheet.Rows[rowIndex];
-                    foreach (var column in sheet.Columns)
-                    {
-                        string value = asset[column];
-                        if (value.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            _searchResults.Add(new SearchResult
-                            {
-                                Sheet = sheet,
-                                RowIndex = rowIndex,
-                                ColumnName = column,
-                                Value = value
-                            });
-                        }
-                    }
-                }
-            }
-
-            if (_searchResults.Count == 0)
-            {
-                MessageBox.Show($"Nessun risultato trovato per '{searchText}'.", "Ricerca", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                searchNextButton.Visible = false;
-                searchTextBox.BackColor = SystemColors.Window;
-                return;
-            }
-
-            if (_searchResults.Count > 1)
-            {
-                searchNextButton.Visible = true;
-            }
-            else
-            {
-                searchNextButton.Visible = false;
-            }
-
-            _currentSearchIndex = 0;
-            NavigateToSearchResult(_searchResults[0]);
-            UpdateStatus($"Trovati {_searchResults.Count} risultati (1/{_searchResults.Count})", Color.Blue);
+            _searchManager?.PerformSearch(searchText);
         }
 
         private void searchNextButton_Click(object? sender, EventArgs e)
         {
-            if (_searchResults.Count == 0)
-                return;
-
-            _currentSearchIndex++;
-            if (_currentSearchIndex >= _searchResults.Count)
-            {
-                _currentSearchIndex = 0;
-            }
-
-            NavigateToSearchResult(_searchResults[_currentSearchIndex]);
-            UpdateStatus($"Risultato {_currentSearchIndex + 1}/{_searchResults.Count}", Color.Blue);
+            _searchManager?.NavigateNext();
         }
 
         private void NavigateToSearchResult(SearchResult result)
@@ -332,7 +302,6 @@ namespace GestioneCespiti
                     if (colIndex >= 0 && result.RowIndex < grid.Rows.Count)
                     {
                         grid.ClearSelection();
-                        // +1 perché la prima colonna è il numero riga
                         grid.Rows[result.RowIndex].Cells[colIndex + 1].Selected = true;
                         grid.FirstDisplayedScrollingRowIndex = result.RowIndex;
                         grid.Focus();
@@ -396,7 +365,7 @@ namespace GestioneCespiti
                     var newSheet = AssetSheet.CreateNew(header);
                     AddSheetTab(newSheet);
                     _persistenceService.SaveSheet(newSheet);
-                    UpdateStatus("Nuovo foglio creato", Color.Green);
+                    _statusManager?.UpdateStatus("Nuovo foglio creato", Color.Green);
                 }
             }
         }
@@ -428,176 +397,12 @@ namespace GestioneCespiti
                 Tag = sheet
             };
 
-            BindGridToSheet(grid, sheet);
+            _gridManager?.BindGridToSheet(grid, sheet);
 
             panel.Controls.Add(grid);
             panel.Controls.Add(lblHeader);
             tabPage.Controls.Add(panel);
             tabControl.TabPages.Add(tabPage);
-        }
-
-        private void BindGridToSheet(DataGridView grid, AssetSheet sheet)
-        {
-            if (grid.DataSource is DataTable oldTable)
-            {
-                grid.DataSource = null;
-                oldTable.Dispose();
-            }
-
-            var table = new DataTable();
-
-            // Aggiungi colonna numero riga
-            table.Columns.Add("#", typeof(int));
-
-            foreach (var col in sheet.Columns)
-            {
-                table.Columns.Add(col, typeof(string));
-            }
-
-            int rowNumber = 1;
-            foreach (var asset in sheet.Rows)
-            {
-                var row = table.NewRow();
-                row["#"] = rowNumber++;
-                foreach (var col in sheet.Columns)
-                {
-                    row[col] = asset[col];
-                }
-                table.Rows.Add(row);
-            }
-
-            grid.AutoGenerateColumns = false;
-            grid.Columns.Clear();
-
-            // Aggiungi colonna numero riga (readonly, larghezza fissa)
-            var rowNumberColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "#",
-                Name = "#",
-                DataPropertyName = "#",
-                ReadOnly = true,
-                Width = 50,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    BackColor = Color.LightGray,
-                    ForeColor = Color.Black,
-                    Alignment = DataGridViewContentAlignment.MiddleCenter,
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold)
-                }
-            };
-            grid.Columns.Add(rowNumberColumn);
-
-            foreach (var colName in sheet.Columns)
-            {
-                DataGridViewColumn column;
-
-                if (colName == "Causa dismissione")
-                {
-                    var comboColumn = new DataGridViewComboBoxColumn
-                    {
-                        HeaderText = colName,
-                        Name = colName,
-                        DataPropertyName = colName,
-                        DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton
-                    };
-
-                    foreach (var option in _appSettings.CauseDismissioneOptions)
-                    {
-                        comboColumn.Items.Add(option);
-                    }
-
-                    column = comboColumn;
-                }
-                else
-                {
-                    column = new DataGridViewTextBoxColumn
-                    {
-                        HeaderText = colName,
-                        Name = colName,
-                        DataPropertyName = colName
-                    };
-                }
-
-                grid.Columns.Add(column);
-            }
-
-            grid.DataSource = table;
-
-            grid.CellValueChanged -= Grid_CellValueChanged;
-            grid.CellClick -= Grid_CellClick;
-            grid.EditingControlShowing -= Grid_EditingControlShowing;
-
-            if (!_isReadOnly)
-            {
-                grid.CellValueChanged += Grid_CellValueChanged;
-                grid.CellClick += Grid_CellClick;
-                grid.EditingControlShowing += Grid_EditingControlShowing;
-            }
-            else
-            {
-                grid.DefaultCellStyle.BackColor = Color.WhiteSmoke;
-                grid.DefaultCellStyle.ForeColor = Color.DarkGray;
-            }
-        }
-
-        private void Grid_CellClick(object? sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _isReadOnly)
-                return;
-
-            var grid = sender as DataGridView;
-            if (grid == null)
-                return;
-
-            var column = grid.Columns[e.ColumnIndex];
-            if (column is DataGridViewComboBoxColumn)
-            {
-                grid.BeginEdit(true);
-
-                var editControl = grid.EditingControl as ComboBox;
-                if (editControl != null)
-                {
-                    editControl.DroppedDown = true;
-                }
-            }
-        }
-
-        private void Grid_EditingControlShowing(object? sender, DataGridViewEditingControlShowingEventArgs e)
-        {
-            if (e.Control is ComboBox comboBox)
-            {
-                comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            }
-        }
-
-        private void Grid_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _isReadOnly)
-                return;
-
-            // La prima colonna (indice 0) è la colonna numero riga, salta
-            if (e.ColumnIndex == 0)
-                return;
-
-            var sheet = GetCurrentSheet();
-            var grid = GetCurrentGrid();
-            if (sheet == null || grid == null)
-                return;
-
-            // L'indice della colonna sheet è -1 perché la prima colonna è il numero riga
-            string colName = sheet.Columns[e.ColumnIndex - 1];
-            string newValue = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString() ?? string.Empty;
-            sheet.Rows[e.RowIndex][colName] = newValue;
-
-            _hasUnsavedChanges = true;
-
-            lock (_saveLock)
-            {
-                _saveTimer?.Dispose();
-                _saveTimer = null;
-
-                _saveTimer = new System.Threading.Timer(SaveTimerCallback, sheet, 2000, Timeout.Infinite);
-            }
         }
 
         private void SaveTimerCallback(object? state)
@@ -618,22 +423,19 @@ namespace GestioneCespiti
 
                 _hasUnsavedChanges = false;
 
-                if (!this.IsDisposed)
+                if (!this.IsDisposed && this.InvokeRequired)
                 {
-                    if (this.InvokeRequired)
+                    this.BeginInvoke(new Action(() =>
                     {
-                        this.BeginInvoke(new Action(() =>
+                        if (!this.IsDisposed)
                         {
-                            if (!this.IsDisposed)
-                            {
-                                UpdateStatus("Salvato automaticamente", Color.Green);
-                            }
-                        }));
-                    }
-                    else
-                    {
-                        UpdateStatus("Salvato automaticamente", Color.Green);
-                    }
+                            _statusManager?.UpdateStatus("Salvato automaticamente", Color.Green);
+                        }
+                    }));
+                }
+                else if (!this.IsDisposed)
+                {
+                    _statusManager?.UpdateStatus("Salvato automaticamente", Color.Green);
                 }
             }
             catch (Exception ex)
@@ -646,7 +448,7 @@ namespace GestioneCespiti
                     {
                         if (!this.IsDisposed)
                         {
-                            UpdateStatus("Errore salvataggio automatico", Color.Red);
+                            _statusManager?.UpdateStatus("Errore salvataggio automatico", Color.Red);
                         }
                     }));
                 }
@@ -674,18 +476,7 @@ namespace GestioneCespiti
             if (tabControl.SelectedTab == null)
                 return null;
 
-            foreach (Control control in tabControl.SelectedTab.Controls)
-            {
-                if (control is Panel panel)
-                {
-                    foreach (Control innerControl in panel.Controls)
-                    {
-                        if (innerControl is DataGridView grid)
-                            return grid;
-                    }
-                }
-            }
-            return null;
+            return GetGridFromTab(tabControl.SelectedTab);
         }
 
         private Label? GetCurrentHeaderLabel()
@@ -713,7 +504,7 @@ namespace GestioneCespiti
             var grid = GetCurrentGrid();
             if (sheet != null && grid != null)
             {
-                BindGridToSheet(grid, sheet);
+                _gridManager?.BindGridToSheet(grid, sheet);
             }
         }
 
@@ -724,71 +515,12 @@ namespace GestioneCespiti
                 var sheet = tab.Tag as AssetSheet;
                 if (sheet != null)
                 {
-                    foreach (Control control in tab.Controls)
+                    var grid = GetGridFromTab(tab);
+                    if (grid != null)
                     {
-                        if (control is Panel panel)
-                        {
-                            foreach (Control innerControl in panel.Controls)
-                            {
-                                if (innerControl is DataGridView grid)
-                                {
-                                    BindGridToSheet(grid, sheet);
-                                }
-                            }
-                        }
+                        _gridManager?.BindGridToSheet(grid, sheet);
                     }
                 }
-            }
-        }
-
-        private void UpdateStatus(string message, Color color)
-        {
-            if (_statusLabel == null || this.IsDisposed)
-                return;
-
-            if (this.InvokeRequired)
-            {
-                this.BeginInvoke(new Action(() => UpdateStatus(message, color)));
-                return;
-            }
-
-            if (_statusTimer != null)
-            {
-                _statusTimer.Stop();
-                _statusTimer.Dispose();
-                _statusTimer = null;
-            }
-
-            _statusLabel.Text = message;
-            _statusLabel.ForeColor = color;
-
-            _statusTimer = new System.Windows.Forms.Timer { Interval = 3000 };
-            _statusTimer.Tick += StatusTimer_Tick;
-            _statusTimer.Start();
-        }
-
-        private void StatusTimer_Tick(object? sender, EventArgs e)
-        {
-            if (sender is not System.Windows.Forms.Timer timer)
-                return;
-
-            try
-            {
-                timer.Stop();
-
-                if (!this.IsDisposed && _statusLabel != null)
-                {
-                    _statusLabel.Text = "Pronto";
-                    _statusLabel.ForeColor = Color.Black;
-                }
-            }
-            finally
-            {
-                timer.Tick -= StatusTimer_Tick;
-                timer.Dispose();
-
-                if (_statusTimer == timer)
-                    _statusTimer = null;
             }
         }
 
@@ -839,7 +571,7 @@ namespace GestioneCespiti
             {
                 _persistenceService.SaveSheet(sheet);
                 _hasUnsavedChanges = false;
-                UpdateStatus("Foglio salvato", Color.Green);
+                _statusManager?.UpdateStatus("Foglio salvato", Color.Green);
                 MessageBox.Show("Foglio salvato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
@@ -869,7 +601,7 @@ namespace GestioneCespiti
                     try
                     {
                         _excelService.ExportToExcel(sheet, sfd.FileName);
-                        UpdateStatus("Esportato in Excel", Color.Green);
+                        _statusManager?.UpdateStatus("Esportato in Excel", Color.Green);
                         MessageBox.Show("Esportazione completata con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
@@ -896,7 +628,7 @@ namespace GestioneCespiti
             {
                 _persistenceService.SaveSheet(sheet);
                 _hasUnsavedChanges = false;
-                UpdateStatus("Riga aggiunta", Color.Green);
+                _statusManager?.UpdateStatus("Riga aggiunta", Color.Green);
             }
             catch (Exception ex)
             {
@@ -931,7 +663,7 @@ namespace GestioneCespiti
                     {
                         _persistenceService.SaveSheet(sheet);
                         _hasUnsavedChanges = false;
-                        UpdateStatus("Riga eliminata", Color.Green);
+                        _statusManager?.UpdateStatus("Riga eliminata", Color.Green);
                     }
                     catch (Exception ex)
                     {
@@ -972,7 +704,7 @@ namespace GestioneCespiti
                     {
                         _persistenceService.SaveSheet(sheet);
                         _hasUnsavedChanges = false;
-                        UpdateStatus("Colonna aggiunta", Color.Green);
+                        _statusManager?.UpdateStatus("Colonna aggiunta", Color.Green);
                     }
                     catch (Exception ex)
                     {
@@ -998,14 +730,12 @@ namespace GestioneCespiti
 
             int colIndex = grid.SelectedCells[0].ColumnIndex;
 
-            // La prima colonna (indice 0) è il numero riga
             if (colIndex == 0)
             {
                 MessageBox.Show("Non puoi eliminare la colonna numero riga.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // L'indice reale nella sheet è -1 perché la prima colonna è il numero riga
             int sheetColIndex = colIndex - 1;
 
             if (sheetColIndex < AssetSheet.StandardColumnCount)
@@ -1032,7 +762,7 @@ namespace GestioneCespiti
                 {
                     _persistenceService.SaveSheet(sheet);
                     _hasUnsavedChanges = false;
-                    UpdateStatus("Colonna eliminata", Color.Green);
+                    _statusManager?.UpdateStatus("Colonna eliminata", Color.Green);
                 }
                 catch (Exception ex)
                 {
@@ -1078,7 +808,7 @@ namespace GestioneCespiti
                     {
                         _persistenceService.SaveSheet(sheet);
                         _hasUnsavedChanges = false;
-                        UpdateStatus("Foglio rinominato", Color.Green);
+                        _statusManager?.UpdateStatus("Foglio rinominato", Color.Green);
                         MessageBox.Show("Foglio rinominato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
@@ -1113,7 +843,7 @@ namespace GestioneCespiti
                     _persistenceService.DeleteSheet(sheet);
                     RemoveTabAndDispose(currentTab);
                     _hasUnsavedChanges = false;
-                    UpdateStatus("Foglio eliminato", Color.Green);
+                    _statusManager?.UpdateStatus("Foglio eliminato", Color.Green);
                     MessageBox.Show("Foglio eliminato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
@@ -1152,7 +882,7 @@ namespace GestioneCespiti
                     _persistenceService.ArchiveSheet(sheet);
                     RemoveTabAndDispose(currentTab);
                     _hasUnsavedChanges = false;
-                    UpdateStatus("Foglio archiviato", Color.Green);
+                    _statusManager?.UpdateStatus("Foglio archiviato", Color.Green);
                     MessageBox.Show("Foglio archiviato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
@@ -1184,7 +914,7 @@ namespace GestioneCespiti
                             RemoveTabAndDispose(tabControl.TabPages[0]);
                         }
                         LoadAllSheets();
-                        UpdateStatus("Fogli ricaricati", Color.Green);
+                        _statusManager?.UpdateStatus("Fogli ricaricati", Color.Green);
                     }
                 }
             }
@@ -1201,7 +931,7 @@ namespace GestioneCespiti
                     try
                     {
                         _settingsService.SaveSettings(_appSettings);
-                        UpdateStatus("Opzioni salvate", Color.Green);
+                        _statusManager?.UpdateStatus("Opzioni salvate", Color.Green);
                         MessageBox.Show("Impostazioni salvate con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         RefreshAllGrids();
                     }

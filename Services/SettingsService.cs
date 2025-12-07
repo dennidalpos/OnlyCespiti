@@ -54,11 +54,7 @@ namespace GestioneCespiti.Services
                         settings.CauseDismissioneOptions = new AppSettings().CauseDismissioneOptions;
                     }
 
-                    settings.CauseDismissioneOptions = settings.CauseDismissioneOptions
-                        .Where(s => !string.IsNullOrWhiteSpace(s))
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToList();
-
+                    settings.CauseDismissioneOptions = SanitizeOptions(settings.CauseDismissioneOptions);
                     return settings;
                 }
                 
@@ -95,10 +91,7 @@ namespace GestioneCespiti.Services
                     Logger.LogWarning("CauseDismissioneOptions era null, inizializzato con valori default");
                 }
 
-                settings.CauseDismissioneOptions = settings.CauseDismissioneOptions
-                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                settings.CauseDismissioneOptions = SanitizeOptions(settings.CauseDismissioneOptions);
 
                 string json = JsonConvert.SerializeObject(settings, Formatting.Indented);
 
@@ -125,6 +118,14 @@ namespace GestioneCespiti.Services
                 Logger.LogError("Errore salvataggio impostazioni", ex);
                 throw new IOException("Impossibile salvare le impostazioni", ex);
             }
+        }
+
+        private static List<string> SanitizeOptions(List<string> options)
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            return options
+                .Where(s => !string.IsNullOrWhiteSpace(s) && seen.Add(s))
+                .ToList();
         }
     }
 }

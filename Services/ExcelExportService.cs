@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using ClosedXML.Excel;
 using GestioneCespiti.Models;
+using GestioneCespiti.Utils;
 
 namespace GestioneCespiti.Services
 {
@@ -21,13 +22,16 @@ namespace GestioneCespiti.Services
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentException("Il percorso del file non può essere vuoto", nameof(filePath));
 
+            string? directory = Path.GetDirectoryName(filePath);
+            if (string.IsNullOrEmpty(directory))
+                throw new ArgumentException("Directory path cannot be determined", nameof(filePath));
+
             try
             {
-                string? directory = Path.GetDirectoryName(filePath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
+                string fullPath = Path.GetFullPath(filePath);
+                string fullDirectory = Path.GetFullPath(directory);
+
+                PathValidator.EnsureDirectoryExists(fullDirectory);
             }
             catch (Exception ex)
             {

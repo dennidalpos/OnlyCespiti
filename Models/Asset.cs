@@ -13,24 +13,18 @@ namespace GestioneCespiti.Models
 
         public string this[string columnName]
         {
-            get => Values.ContainsKey(columnName) ? Values[columnName] : string.Empty;
+            get => Values.TryGetValue(columnName, out var value) ? value : string.Empty;
             set => Values[columnName] = value ?? string.Empty;
         }
 
         public bool TryGetValue(string columnName, out string value)
         {
-            if (Values.ContainsKey(columnName))
-            {
-                value = Values[columnName];
-                return true;
-            }
-            value = string.Empty;
-            return false;
+            return Values.TryGetValue(columnName, out value!);
         }
 
         public string GetValueOrDefault(string columnName, string defaultValue = "")
         {
-            return Values.ContainsKey(columnName) ? Values[columnName] : defaultValue;
+            return Values.TryGetValue(columnName, out var value) ? value : defaultValue;
         }
     }
 }
