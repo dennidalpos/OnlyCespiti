@@ -7,6 +7,7 @@ using System.Threading;
 using System.Windows.Forms;
 using GestioneCespiti.Models;
 using GestioneCespiti.Services;
+using GestioneCespiti.Forms.Dialogs;
 
 namespace GestioneCespiti
 {
@@ -22,7 +23,7 @@ namespace GestioneCespiti
         private readonly object _saveLock = new object();
         private ToolStripLabel? _statusLabel;
         private System.Windows.Forms.Timer? _statusTimer;
-        
+
         private List<SearchResult> _searchResults = new List<SearchResult>();
         private int _currentSearchIndex = -1;
         private bool _hasUnsavedChanges = false;
@@ -201,7 +202,7 @@ namespace GestioneCespiti
             if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                
+
                 if (_searchResults.Count > 0)
                 {
                     searchNextButton_Click(sender, e);
@@ -216,7 +217,7 @@ namespace GestioneCespiti
         private void searchButton_Click(object? sender, EventArgs e)
         {
             string searchText = searchTextBox.Text?.Trim() ?? string.Empty;
-            
+
             if (string.IsNullOrEmpty(searchText))
             {
                 MessageBox.Show("Inserisci un testo da cercare.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -528,7 +529,7 @@ namespace GestioneCespiti
             if (column is DataGridViewComboBoxColumn)
             {
                 grid.BeginEdit(true);
-                
+
                 var editControl = grid.EditingControl as ComboBox;
                 if (editControl != null)
                 {
@@ -861,7 +862,7 @@ namespace GestioneCespiti
             var newAsset = new Asset();
             sheet.Rows.Add(newAsset);
             RefreshCurrentGrid();
-            
+
             try
             {
                 _persistenceService.SaveSheet(sheet);
@@ -896,7 +897,7 @@ namespace GestioneCespiti
                 {
                     sheet.Rows.RemoveAt(rowIndex);
                     RefreshCurrentGrid();
-                    
+
                     try
                     {
                         _persistenceService.SaveSheet(sheet);
@@ -937,7 +938,7 @@ namespace GestioneCespiti
 
                     sheet.Columns.Add(colName);
                     RefreshCurrentGrid();
-                    
+
                     try
                     {
                         _persistenceService.SaveSheet(sheet);
@@ -986,7 +987,7 @@ namespace GestioneCespiti
                 }
 
                 RefreshCurrentGrid();
-                
+
                 try
                 {
                     _persistenceService.SaveSheet(sheet);
@@ -1168,331 +1169,6 @@ namespace GestioneCespiti
                     {
                         Logger.LogError("Errore salvataggio opzioni", ex);
                         MessageBox.Show($"Errore durante il salvataggio:\n{ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-            }
-        }
-    }
-
-    public class SearchResult
-    {
-        public AssetSheet Sheet { get; set; } = null!;
-        public int RowIndex { get; set; }
-        public string ColumnName { get; set; } = string.Empty;
-        public string Value { get; set; } = string.Empty;
-    }
-
-    public class InputDialog : Form
-    {
-        private readonly TextBox textBox;
-        private readonly Label validationLabel;
-        private readonly int _maxLength;
-
-        public string InputText => textBox.Text;
-
-        public InputDialog(string prompt, string defaultValue, int maxLength = 100)
-        {
-            _maxLength = maxLength;
-
-            Text = "Input";
-            Size = new Size(400, 180);
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-
-            var label = new Label
-            {
-                Text = prompt,
-                Location = new Point(10, 10),
-                Size = new Size(370, 20)
-            };
-
-            textBox = new TextBox
-            {
-                Text = defaultValue,
-                Location = new Point(10, 35),
-                Size = new Size(370, 20),
-                MaxLength = _maxLength
-            };
-
-            validationLabel = new Label
-            {
-                Text = $"{defaultValue.Length}/{_maxLength} caratteri",
-                Location = new Point(10, 60),
-                Size = new Size(370, 15),
-                ForeColor = Color.Gray,
-                Font = new Font("Segoe UI", 8)
-            };
-
-            textBox.TextChanged += (s, e) =>
-            {
-                int length = textBox.Text.Length;
-                validationLabel.Text = $"{length}/{_maxLength} caratteri";
-                validationLabel.ForeColor = length > _maxLength * 0.9 ? Color.OrangeRed : Color.Gray;
-            };
-
-            var btnOk = new Button
-            {
-                Text = "OK",
-                DialogResult = DialogResult.OK,
-                Location = new Point(210, 90),
-                Size = new Size(80, 25)
-            };
-
-            var btnCancel = new Button
-            {
-                Text = "Annulla",
-                DialogResult = DialogResult.Cancel,
-                Location = new Point(300, 90),
-                Size = new Size(80, 25)
-            };
-
-            Controls.AddRange(new Control[] { label, textBox, validationLabel, btnOk, btnCancel });
-            AcceptButton = btnOk;
-            CancelButton = btnCancel;
-        }
-    }
-
-    public class OptionsDialog : Form
-    {
-        private readonly ListBox listBox;
-        private readonly AppSettings _settings;
-
-        public OptionsDialog(AppSettings settings)
-        {
-            _settings = settings;
-
-            _settings.CauseDismissioneOptions = _settings.CauseDismissioneOptions
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            Text = "Gestisci Opzioni Causa Dismissione";
-            Size = new Size(450, 350);
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-
-            var label = new Label
-            {
-                Text = "Opzioni disponibili per 'Causa dismissione':",
-                Location = new Point(10, 10),
-                Size = new Size(420, 20)
-            };
-
-            listBox = new ListBox
-            {
-                Location = new Point(10, 35),
-                Size = new Size(420, 200)
-            };
-
-            RefreshList();
-
-            var btnAdd = new Button
-            {
-                Text = "Aggiungi",
-                Location = new Point(10, 245),
-                Size = new Size(100, 30)
-            };
-            btnAdd.Click += BtnAdd_Click;
-
-            var btnRemove = new Button
-            {
-                Text = "Rimuovi",
-                Location = new Point(120, 245),
-                Size = new Size(100, 30)
-            };
-            btnRemove.Click += BtnRemove_Click;
-
-            var btnOk = new Button
-            {
-                Text = "OK",
-                DialogResult = DialogResult.OK,
-                Location = new Point(250, 245),
-                Size = new Size(80, 30)
-            };
-
-            var btnCancel = new Button
-            {
-                Text = "Annulla",
-                DialogResult = DialogResult.Cancel,
-                Location = new Point(340, 245),
-                Size = new Size(90, 30)
-            };
-
-            Controls.AddRange(new Control[] { label, listBox, btnAdd, btnRemove, btnOk, btnCancel });
-        }
-
-        private void RefreshList()
-        {
-            listBox.BeginUpdate();
-            listBox.Items.Clear();
-            foreach (var option in _settings.CauseDismissioneOptions)
-            {
-                listBox.Items.Add(option);
-            }
-            listBox.EndUpdate();
-        }
-
-        private void BtnAdd_Click(object? sender, EventArgs e)
-        {
-            using (var inputDialog = new InputDialog("Inserisci nuova opzione:", "", 100))
-            {
-                if (inputDialog.ShowDialog() == DialogResult.OK)
-                {
-                    string newOption = inputDialog.InputText.Trim();
-                    if (!string.IsNullOrWhiteSpace(newOption) && 
-                        !_settings.CauseDismissioneOptions.Contains(newOption, StringComparer.OrdinalIgnoreCase))
-                    {
-                        _settings.CauseDismissioneOptions.Add(newOption);
-                        RefreshList();
-                    }
-                }
-            }
-        }
-
-        private void BtnRemove_Click(object? sender, EventArgs e)
-        {
-            if (listBox.SelectedItem == null)
-                return;
-
-            string selected = listBox.SelectedItem.ToString()!;
-
-            if (AppSettings.IsDefaultOption(selected))
-            {
-                MessageBox.Show(
-                    $"Non puoi rimuovere l'opzione di default '{selected}'.",
-                    "Opzione Protetta",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-                return;
-            }
-
-            var result = MessageBox.Show(
-                $"Vuoi davvero rimuovere l'opzione '{selected}'?",
-                "Conferma Rimozione",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (result == DialogResult.Yes)
-            {
-                _settings.CauseDismissioneOptions.Remove(selected);
-                RefreshList();
-            }
-        }
-    }
-
-    public class ArchiveDialog : Form
-    {
-        private readonly ListBox listBox;
-        private readonly DataPersistenceService _persistenceService;
-        private readonly bool _isReadOnly;
-
-        public ArchiveDialog(List<AssetSheet> archivedSheets, DataPersistenceService persistenceService, bool isReadOnly)
-        {
-            _persistenceService = persistenceService;
-            _isReadOnly = isReadOnly;
-
-            Text = "Fogli Archiviati";
-            Size = new Size(500, 400);
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-
-            var label = new Label
-            {
-                Text = _isReadOnly ? "Fogli archiviati (sola lettura):" : "Seleziona un foglio da ripristinare o eliminare:",
-                Location = new Point(10, 10),
-                Size = new Size(470, 20)
-            };
-
-            listBox = new ListBox
-            {
-                Location = new Point(10, 35),
-                Size = new Size(470, 250),
-                DisplayMember = "Header"
-            };
-
-            foreach (var sheet in archivedSheets)
-            {
-                listBox.Items.Add(sheet);
-            }
-
-            var btnRestore = new Button
-            {
-                Text = "Ripristina",
-                Location = new Point(10, 300),
-                Size = new Size(100, 30),
-                Enabled = !_isReadOnly
-            };
-            btnRestore.Click += (s, e) => RestoreSheet();
-
-            var btnDelete = new Button
-            {
-                Text = "Elimina",
-                Location = new Point(120, 300),
-                Size = new Size(100, 30),
-                Enabled = !_isReadOnly
-            };
-            btnDelete.Click += (s, e) => DeleteSheet();
-
-            var btnClose = new Button
-            {
-                Text = "Chiudi",
-                DialogResult = DialogResult.OK,
-                Location = new Point(380, 300),
-                Size = new Size(100, 30)
-            };
-
-            Controls.AddRange(new Control[] { label, listBox, btnRestore, btnDelete, btnClose });
-        }
-
-        private void RestoreSheet()
-        {
-            if (_isReadOnly) return;
-
-            if (listBox.SelectedItem is AssetSheet sheet)
-            {
-                var result = MessageBox.Show($"Vuoi ripristinare il foglio '{sheet.Header}'?", "Conferma", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result == DialogResult.Yes)
-                {
-                    try
-                    {
-                        _persistenceService.UnarchiveSheet(sheet);
-                        listBox.Items.Remove(sheet);
-                        MessageBox.Show("Foglio ripristinato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError("Errore ripristino foglio archiviato", ex);
-                        MessageBox.Show($"Errore: {ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-            }
-        }
-
-        private void DeleteSheet()
-        {
-            if (_isReadOnly) return;
-
-            if (listBox.SelectedItem is AssetSheet sheet)
-            {
-                var result = MessageBox.Show($"Vuoi eliminare definitivamente il foglio '{sheet.Header}'?", "Conferma", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                if (result == DialogResult.Yes)
-                {
-                    try
-                    {
-                        _persistenceService.DeleteSheet(sheet);
-                        listBox.Items.Remove(sheet);
-                        MessageBox.Show("Foglio eliminato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError("Errore eliminazione foglio archiviato", ex);
-                        MessageBox.Show($"Errore: {ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
