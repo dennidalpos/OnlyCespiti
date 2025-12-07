@@ -10,7 +10,7 @@ namespace GestioneCespiti.Managers
         private System.Windows.Forms.Timer? _statusTimer;
         private readonly Form _parentForm;
 
-        public StatusManager(StatusStrip statusStrip, Form parentForm)
+        public StatusManager(ToolStrip statusStrip, Form parentForm)
         {
             _parentForm = parentForm;
             _statusLabel = new ToolStripLabel
