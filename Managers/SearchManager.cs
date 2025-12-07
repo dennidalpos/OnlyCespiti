@@ -15,7 +15,7 @@ namespace GestioneCespiti.Managers
         private int _currentSearchIndex = -1;
 
         public event EventHandler<SearchCompletedEventArgs>? SearchCompleted;
-        public event EventHandler<NavigateEventArgs>? NavigateRequested;
+        public event EventHandler<SearchNavigateEventArgs>? NavigateRequested;
 
         public SearchManager(DataPersistenceService persistenceService)
         {
@@ -65,7 +65,7 @@ namespace GestioneCespiti.Managers
             }
 
             _currentSearchIndex = 0;
-            NavigateRequested?.Invoke(this, new NavigateEventArgs(_searchResults[0]));
+            NavigateRequested?.Invoke(this, new SearchNavigateEventArgs(_searchResults[0]));
             SearchCompleted?.Invoke(this, new SearchCompletedEventArgs(_searchResults.Count, true));
         }
 
@@ -80,7 +80,7 @@ namespace GestioneCespiti.Managers
                 _currentSearchIndex = 0;
             }
 
-            NavigateRequested?.Invoke(this, new NavigateEventArgs(_searchResults[_currentSearchIndex]));
+            NavigateRequested?.Invoke(this, new SearchNavigateEventArgs(_searchResults[_currentSearchIndex]));
         }
 
         public int CurrentIndex => _currentSearchIndex;
@@ -100,11 +100,11 @@ namespace GestioneCespiti.Managers
         }
     }
 
-    public class NavigateEventArgs : EventArgs
+    public class SearchNavigateEventArgs : EventArgs
     {
         public SearchResult Result { get; }
 
-        public NavigateEventArgs(SearchResult result)
+        public SearchNavigateEventArgs(SearchResult result)
         {
             Result = result;
         }
