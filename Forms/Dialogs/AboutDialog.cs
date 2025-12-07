@@ -13,11 +13,9 @@ namespace GestioneCespiti.Forms.Dialogs
             var assembly = Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
             var productName = "GestioneCespiti - Dismissioni";
-            var githubUsername = Environment.GetEnvironmentVariable("GITHUB_USERNAME")
-                                  ?? Environment.UserName;
-            var projectUrl = Environment.GetEnvironmentVariable("GITHUB_PROJECT_URL")
-                             ?? $"https://github.com/{githubUsername}/OnlyCespiti";
-            var company = $"Sviluppato da {githubUsername}";
+            var username = Environment.UserName;
+            var company = $"Sviluppato da {username}";
+            var githubUrl = $"https://github.com/{username}";
             var copyright = $"© {DateTime.Now.Year} - Tutti i diritti riservati";
 
             Text = "Informazioni su";
@@ -66,7 +64,7 @@ namespace GestioneCespiti.Forms.Dialogs
 
             var githubLink = new LinkLabel
             {
-                Text = projectUrl,
+                Text = githubUrl,
                 Font = new Font("Segoe UI", 9, FontStyle.Underline),
                 Location = new Point(20, 200),
                 Size = new Size(ClientSize.Width - 40, 20),
@@ -74,20 +72,20 @@ namespace GestioneCespiti.Forms.Dialogs
                 LinkBehavior = LinkBehavior.HoverUnderline
             };
 
-            githubLink.Links.Add(0, projectUrl.Length, projectUrl);
+            githubLink.Links.Add(0, githubUrl.Length, githubUrl);
             githubLink.LinkClicked += (s, e) =>
             {
                 try
                 {
                     Process.Start(new ProcessStartInfo
                     {
-                        FileName = projectUrl,
+                        FileName = githubUrl,
                         UseShellExecute = true
                     });
                 }
                 catch
                 {
-                    Clipboard.SetText(projectUrl);
+                    Clipboard.SetText(githubUrl);
                     MessageBox.Show("Link copiato negli appunti", "Informazioni", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             };
