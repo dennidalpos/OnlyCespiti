@@ -69,18 +69,21 @@ namespace GestioneCespiti.Managers
             SearchCompleted?.Invoke(this, new SearchCompletedEventArgs(_searchResults.Count, true));
         }
 
-        public void NavigateNext()
+        public bool NavigateNext()
         {
             if (_searchResults.Count == 0)
-                return;
+                return false;
 
             _currentSearchIndex++;
+            bool wrapped = false;
             if (_currentSearchIndex >= _searchResults.Count)
             {
                 _currentSearchIndex = 0;
+                wrapped = true;
             }
 
             NavigateRequested?.Invoke(this, new SearchNavigateEventArgs(_searchResults[_currentSearchIndex]));
+            return wrapped;
         }
 
         public int CurrentIndex => _currentSearchIndex;
