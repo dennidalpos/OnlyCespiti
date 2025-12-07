@@ -10,8 +10,8 @@ namespace GestioneCespiti.Forms.Dialogs
     {
         public AboutDialog()
         {
-            const string defaultGithubUsername = "TuoUsernameGitHub";
-            const string defaultProjectUrl = "https://github.com/TuoUsernameGitHub/OnlyCespiti";
+            const string defaultGithubUsername = "dennidalpos";
+            const string defaultProjectUrl = "https://github.com/dennidalpos/OnlyCespiti";
 
             var assembly = Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
