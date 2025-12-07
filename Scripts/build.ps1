@@ -1,6 +1,25 @@
+# Vai alla directory root del progetto (parent della cartella Scripts)
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptPath
+Set-Location $projectRoot
+
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Build GestioneCespiti" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Directory progetto: $projectRoot" -ForegroundColor Gray
+Write-Host ""
+
+# Verifica esistenza file di progetto
+$projectFile = Join-Path $projectRoot "GestioneCespiti.csproj"
+if (-Not (Test-Path $projectFile)) {
+    Write-Host "ERRORE: File di progetto non trovato!" -ForegroundColor Red
+    Write-Host "Cercato in: $projectFile" -ForegroundColor Red
+    Read-Host "Premi INVIO per uscire"
+    exit 1
+}
+
+Write-Host "File progetto trovato: GestioneCespiti.csproj" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Seleziona la modalità di compilazione:" -ForegroundColor Yellow
@@ -77,7 +96,7 @@ Write-Host "Pulizia completata." -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Esecuzione dotnet restore..." -ForegroundColor Yellow
-dotnet restore
+dotnet restore "GestioneCespiti.csproj"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERRORE durante il restore dei pacchetti." -ForegroundColor Red
     Read-Host "Premi INVIO per uscire"
@@ -87,7 +106,7 @@ Write-Host "Restore completato." -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Esecuzione dotnet build..." -ForegroundColor Yellow
-dotnet build -c Release
+dotnet build "GestioneCespiti.csproj" -c Release
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERRORE durante la compilazione." -ForegroundColor Red
     Read-Host "Premi INVIO per uscire"
@@ -101,10 +120,10 @@ Write-Host "Esecuzione dotnet publish..." -ForegroundColor Yellow
 $projectPath = Get-Location
 
 if ($SelfContained) {
-    dotnet publish -c Release -r $Runtime --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true
+    dotnet publish "GestioneCespiti.csproj" -c Release -r $Runtime --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true
     $outputPath = Join-Path $projectPath "bin\Release\net8.0-windows\$Runtime\publish"
 } else {
-    dotnet publish -c Release -r $Runtime --self-contained false /p:PublishSingleFile=true
+    dotnet publish "GestioneCespiti.csproj" -c Release -r $Runtime --self-contained false /p:PublishSingleFile=true
     $outputPath = Join-Path $projectPath "bin\Release\net8.0-windows\$Runtime\publish"
 }
 
