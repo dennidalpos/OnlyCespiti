@@ -96,7 +96,7 @@ namespace GestioneCespiti
                 menuDeleteSheet.Enabled = false;
                 menuArchiveSheet.Enabled = false;
                 menuRenameSheet.Enabled = false;
-                menuManageOptions.Enabled = false;
+                menuManageColumns.Enabled = false;
 
                 var readOnlyLabel = new ToolStripLabel
                 {
@@ -332,7 +332,8 @@ namespace GestioneCespiti
                     if (colIndex >= 0 && result.RowIndex < grid.Rows.Count)
                     {
                         grid.ClearSelection();
-                        grid.Rows[result.RowIndex].Cells[colIndex].Selected = true;
+                        // +1 perché la prima colonna è il numero riga
+                        grid.Rows[result.RowIndex].Cells[colIndex + 1].Selected = true;
                         grid.FirstDisplayedScrollingRowIndex = result.RowIndex;
                         grid.Focus();
                     }
@@ -445,14 +446,19 @@ namespace GestioneCespiti
 
             var table = new DataTable();
 
+            // Aggiungi colonna numero riga
+            table.Columns.Add("#", typeof(int));
+
             foreach (var col in sheet.Columns)
             {
                 table.Columns.Add(col, typeof(string));
             }
 
+            int rowNumber = 1;
             foreach (var asset in sheet.Rows)
             {
                 var row = table.NewRow();
+                row["#"] = rowNumber++;
                 foreach (var col in sheet.Columns)
                 {
                     row[col] = asset[col];
@@ -462,6 +468,24 @@ namespace GestioneCespiti
 
             grid.AutoGenerateColumns = false;
             grid.Columns.Clear();
+
+            // Aggiungi colonna numero riga (readonly, larghezza fissa)
+            var rowNumberColumn = new DataGridViewTextBoxColumn
+            {
+                HeaderText = "#",
+                Name = "#",
+                DataPropertyName = "#",
+                ReadOnly = true,
+                Width = 50,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    BackColor = Color.LightGray,
+                    ForeColor = Color.Black,
+                    Alignment = DataGridViewContentAlignment.MiddleCenter,
+                    Font = new Font("Segoe UI", 9, FontStyle.Bold)
+                }
+            };
+            grid.Columns.Add(rowNumberColumn);
 
             foreach (var colName in sheet.Columns)
             {
@@ -551,12 +575,17 @@ namespace GestioneCespiti
             if (e.RowIndex < 0 || e.ColumnIndex < 0 || _isReadOnly)
                 return;
 
+            // La prima colonna (indice 0) è la colonna numero riga, salta
+            if (e.ColumnIndex == 0)
+                return;
+
             var sheet = GetCurrentSheet();
             var grid = GetCurrentGrid();
             if (sheet == null || grid == null)
                 return;
 
-            string colName = sheet.Columns[e.ColumnIndex];
+            // L'indice della colonna sheet è -1 perché la prima colonna è il numero riga
+            string colName = sheet.Columns[e.ColumnIndex - 1];
             string newValue = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString() ?? string.Empty;
             sheet.Rows[e.RowIndex][colName] = newValue;
 
@@ -968,17 +997,28 @@ namespace GestioneCespiti
             }
 
             int colIndex = grid.SelectedCells[0].ColumnIndex;
-            if (colIndex < AssetSheet.StandardColumnCount)
+
+            // La prima colonna (indice 0) è il numero riga
+            if (colIndex == 0)
+            {
+                MessageBox.Show("Non puoi eliminare la colonna numero riga.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // L'indice reale nella sheet è -1 perché la prima colonna è il numero riga
+            int sheetColIndex = colIndex - 1;
+
+            if (sheetColIndex < AssetSheet.StandardColumnCount)
             {
                 MessageBox.Show("Non puoi eliminare le colonne standard.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            string colName = sheet.Columns[colIndex];
+            string colName = sheet.Columns[sheetColIndex];
             var result = MessageBox.Show($"Vuoi davvero eliminare la colonna '{colName}'?", "Conferma", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result == DialogResult.Yes)
             {
-                sheet.Columns.RemoveAt(colIndex);
+                sheet.Columns.RemoveAt(sheetColIndex);
 
                 foreach (var asset in sheet.Rows)
                 {

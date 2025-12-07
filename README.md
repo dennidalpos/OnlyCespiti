@@ -47,10 +47,14 @@ OnlyCespiti/
 - Eliminazione fogli
 
 ### Gestione Dati
+- **Numerazione Righe**: Le righe sono numerate automaticamente nella colonna "#"
 - Aggiunta/rimozione righe (cespiti)
 - Aggiunta/rimozione colonne personalizzate
 - Modifica valori con salvataggio automatico
-- Ricerca globale in tutti i fogli
+- **Ricerca Avanzata**: Ricerca globale in tutti i fogli
+  - Premi **Invio** per cercare
+  - Premi **Invio** di nuovo per andare al risultato successivo
+  - Navigazione ciclica tra i risultati
 
 ### Funzionalità Avanzate
 - **Lock Multi-utente**: Solo un utente può modificare i dati alla volta
@@ -60,6 +64,7 @@ OnlyCespiti/
 - **Logging**: Tracciamento completo delle operazioni
 
 ### Colonne Standard
+0. **#** - Numero riga (automatico, non modificabile)
 1. Tipo asset
 2. Marca
 3. Modello
@@ -67,6 +72,42 @@ OnlyCespiti/
 5. Rif inv biofer
 6. Descrizione
 7. Causa dismissione (campo dropdown configurabile)
+
+## Menu Organizzati per Funzione
+
+L'applicazione è organizzata in menu logici per funzione:
+
+### 📁 File
+- **Nuovo Foglio** (Ctrl+N) - Crea un nuovo foglio di dismissione
+- **Salva** (Ctrl+S) - Salva manualmente il foglio corrente
+- **Esporta in Excel** (Ctrl+E) - Esporta il foglio in formato Excel
+
+### 📝 Riga
+- **Aggiungi Riga** (Ctrl+R) - Aggiunge una nuova riga al foglio
+- **Rimuovi Riga** (Ctrl+Delete) - Rimuove la riga selezionata
+
+### 📊 Colonna
+- **Aggiungi Colonna** (Ctrl+K) - Aggiunge una nuova colonna personalizzata
+- **Rimuovi Colonna** (Ctrl+Shift+Delete) - Rimuove la colonna selezionata
+
+### 📄 Foglio
+- **Rinomina Foglio** (F2) - Rinomina il foglio corrente
+- **Elimina Foglio** (Ctrl+D) - Elimina definitivamente il foglio
+
+### 📦 Archiviazione
+- **Archivia Foglio Corrente** (Ctrl+A) - Archivia il foglio corrente
+- **Recupera Foglio da Archivio** (Ctrl+H) - Visualizza e ripristina fogli archiviati
+
+### 🔧 Strumenti
+- **Gestione Colonne** - Menu per configurare colonne con dropdown
+  - **Causa Dismissione** (Ctrl+O) - Gestisce le opzioni del dropdown "Causa dismissione"
+  - *(Altre colonne future potranno essere aggiunte qui)*
+
+### 🔍 Ricerca
+- **Barra di ricerca** - Campo di testo in alto a destra
+- **Cerca** - Avvia la ricerca
+- **► (Successivo)** - Va al risultato successivo
+- **Invio nella barra** - Cerca o va al successivo se ci sono già risultati
 
 ## Tecnologie Utilizzate
 
@@ -121,6 +162,19 @@ dotnet build
 4. ✅ Organizzazione cartelle per tipo (Forms, Models, Services)
 5. ✅ Creazione cartelle Properties e Scripts
 6. ✅ Aggiunta .gitignore
+
+### Miglioramenti UX e Menu (2025-12-07)
+1. ✅ **Numerazione Righe**: Aggiunta colonna "#" automatica con numerazione progressiva
+2. ✅ **Ricerca Migliorata**: Premi Invio per cercare o andare al risultato successivo
+3. ✅ **Riorganizzazione Menu**: Menu divisi logicamente per funzione
+   - File: operazioni su file
+   - Riga: gestione righe
+   - Colonna: gestione colonne
+   - Foglio: operazioni sui fogli
+   - Archiviazione: gestione archivio
+   - Strumenti: configurazione avanzata
+4. ✅ **Menu Gestione Colonne**: Sottomenu strutturato per future colonne con dropdown
+5. ✅ **UI Migliorata**: Tooltip informativi e simboli più chiari (► per successivo)
 
 ## Licenza
 
