@@ -123,7 +123,7 @@ if ($SelfContained) {
     dotnet publish "GestioneCespiti.csproj" -c Release -r $Runtime --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true
     $outputPath = Join-Path $projectPath "bin\Release\net8.0-windows\$Runtime\publish"
 } else {
-    dotnet publish "GestioneCespiti.csproj" -c Release -r $Runtime --self-contained false /p:PublishSingleFile=true
+    dotnet publish "GestioneCespiti.csproj" -c Release -r $Runtime --self-contained false /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true
     $outputPath = Join-Path $projectPath "bin\Release\net8.0-windows\$Runtime\publish"
 }
 

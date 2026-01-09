@@ -18,7 +18,8 @@ namespace GestioneCespiti
         private readonly ExcelExportService _excelService;
         private readonly SettingsService _settingsService;
         private readonly LockService _lockService;
-        private AppSettings _appSettings;
+        private AppSettings _defaultSettings;
+        private readonly Dictionary<string, AppSettings> _sheetSettings = new Dictionary<string, AppSettings>(StringComparer.OrdinalIgnoreCase);
         private bool _isReadOnly;
         private System.Threading.Timer? _saveTimer;
         private readonly object _saveLock = new object();
@@ -36,7 +37,7 @@ namespace GestioneCespiti
             _excelService = new ExcelExportService();
             _settingsService = new SettingsService();
             _lockService = new LockService();
-            _appSettings = _settingsService.LoadSettings();
+            _defaultSettings = _settingsService.LoadSettings();
 
             CheckApplicationLock();
             InitializeManagers();
@@ -54,7 +55,7 @@ namespace GestioneCespiti
         {
             _statusManager = new StatusManager(statusStrip, this);
             _searchManager = new SearchManager(_persistenceService);
-            _gridManager = new GridManager(_appSettings, _isReadOnly);
+            _gridManager = new GridManager(_isReadOnly);
 
             _searchManager.SearchCompleted += SearchManager_SearchCompleted;
             _searchManager.NavigateRequested += SearchManager_NavigateRequested;
@@ -374,6 +375,7 @@ namespace GestioneCespiti
                     var newSheet = AssetSheet.CreateNew(header);
                     AddSheetTab(newSheet);
                     _persistenceService.SaveSheet(newSheet);
+                    InitializeSheetSettings(newSheet);
                     _statusManager?.UpdateStatus("Nuovo foglio creato", Color.Green);
                 }
             }
@@ -399,14 +401,16 @@ namespace GestioneCespiti
             var grid = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 ReadOnly = _isReadOnly,
-                Tag = sheet
+                Tag = sheet,
+                EditMode = DataGridViewEditMode.EditOnEnter
             };
 
-            _gridManager?.BindGridToSheet(grid, sheet);
+            var settings = GetSheetSettings(sheet);
+            _gridManager?.BindGridToSheet(grid, sheet, settings);
 
             panel.Controls.Add(grid);
             panel.Controls.Add(lblHeader);
@@ -513,7 +517,8 @@ namespace GestioneCespiti
             var grid = GetCurrentGrid();
             if (sheet != null && grid != null)
             {
-                _gridManager?.BindGridToSheet(grid, sheet);
+                var settings = GetSheetSettings(sheet);
+                _gridManager?.BindGridToSheet(grid, sheet, settings);
             }
         }
 
@@ -527,7 +532,8 @@ namespace GestioneCespiti
                     var grid = GetGridFromTab(tab);
                     if (grid != null)
                     {
-                        _gridManager?.BindGridToSheet(grid, sheet);
+                        var settings = GetSheetSettings(sheet);
+                        _gridManager?.BindGridToSheet(grid, sheet, settings);
                     }
                 }
             }
@@ -933,13 +939,26 @@ namespace GestioneCespiti
         {
             if (_isReadOnly) return;
 
-            using (var optionsDialog = new OptionsDialog(_appSettings))
+            var sheet = GetCurrentSheet();
+            if (sheet == null)
+            {
+                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var optionsDialog = new OptionsDialog(
+                "Gestisci Opzioni Causa Dismissione",
+                "Opzioni disponibili per 'Causa dismissione':",
+                GetSheetSettings(sheet).CauseDismissioneOptions,
+                AppSettings.IsDefaultOption))
             {
                 if (optionsDialog.ShowDialog() == DialogResult.OK)
                 {
                     try
                     {
-                        _settingsService.SaveSettings(_appSettings);
+                        var sheetSettings = GetSheetSettings(sheet);
+                        _settingsService.SaveSettingsForSheet(sheetSettings, sheet.FileName);
+                        _sheetSettings[sheet.FileName] = sheetSettings;
                         _statusManager?.UpdateStatus("Opzioni salvate", Color.Green);
                         MessageBox.Show("Impostazioni salvate con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         RefreshAllGrids();
@@ -953,12 +972,87 @@ namespace GestioneCespiti
             }
         }
 
+        private void btnManageTipoAsset_Click(object? sender, EventArgs e)
+        {
+            if (_isReadOnly) return;
+
+            var sheet = GetCurrentSheet();
+            if (sheet == null)
+            {
+                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var optionsDialog = new OptionsDialog(
+                "Gestisci Opzioni Tipo Asset",
+                "Opzioni disponibili per 'Tipo asset':",
+                GetSheetSettings(sheet).TipoAssetOptions))
+            {
+                if (optionsDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        var sheetSettings = GetSheetSettings(sheet);
+                        _settingsService.SaveSettingsForSheet(sheetSettings, sheet.FileName);
+                        _sheetSettings[sheet.FileName] = sheetSettings;
+                        _statusManager?.UpdateStatus("Opzioni salvate", Color.Green);
+                        MessageBox.Show("Impostazioni salvate con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        RefreshAllGrids();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError("Errore salvataggio opzioni tipo asset", ex);
+                        MessageBox.Show($"Errore durante il salvataggio:\n{ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
         private void menuAbout_Click(object? sender, EventArgs e)
         {
             using (var aboutDialog = new AboutDialog())
             {
                 aboutDialog.ShowDialog(this);
             }
+        }
+
+        private AppSettings GetSheetSettings(AssetSheet? sheet)
+        {
+            if (sheet == null || string.IsNullOrWhiteSpace(sheet.FileName))
+            {
+                return CreateCopy(_defaultSettings);
+            }
+
+            if (_sheetSettings.TryGetValue(sheet.FileName, out var cachedSettings))
+            {
+                return cachedSettings;
+            }
+
+            var settings = _settingsService.LoadSettingsForSheet(sheet.FileName, _defaultSettings);
+            _sheetSettings[sheet.FileName] = settings;
+            return settings;
+        }
+
+        private void InitializeSheetSettings(AssetSheet sheet)
+        {
+            if (string.IsNullOrWhiteSpace(sheet.FileName))
+                return;
+
+            if (_sheetSettings.ContainsKey(sheet.FileName))
+                return;
+
+            var settings = CreateCopy(_defaultSettings);
+            _settingsService.SaveSettingsForSheet(settings, sheet.FileName);
+            _sheetSettings[sheet.FileName] = settings;
+        }
+
+        private static AppSettings CreateCopy(AppSettings settings)
+        {
+            return new AppSettings
+            {
+                CauseDismissioneOptions = new List<string>(settings.CauseDismissioneOptions),
+                TipoAssetOptions = new List<string>(settings.TipoAssetOptions)
+            };
         }
     }
 }

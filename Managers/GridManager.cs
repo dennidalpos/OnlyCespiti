@@ -1,25 +1,29 @@
 using System;
 using System.Data;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using GestioneCespiti.Models;
+using GestioneCespiti.Services;
 
 namespace GestioneCespiti.Managers
 {
     public class GridManager
     {
-        private readonly AppSettings _appSettings;
+        private const string CauseDismissioneColumn = "Causa dismissione";
+        private const string TipoAssetColumn = "Tipo asset";
+        private const string CustomOptionLabel = "Personalizza...";
+
         private readonly bool _isReadOnly;
 
         public event EventHandler<CellValueChangedEventArgs>? CellValueChanged;
 
-        public GridManager(AppSettings appSettings, bool isReadOnly)
+        public GridManager(bool isReadOnly)
         {
-            _appSettings = appSettings;
             _isReadOnly = isReadOnly;
         }
 
-        public void BindGridToSheet(DataGridView grid, AssetSheet sheet)
+        public void BindGridToSheet(DataGridView grid, AssetSheet sheet, AppSettings settings)
         {
             if (grid.DataSource is DataTable oldTable)
             {
@@ -72,8 +76,28 @@ namespace GestioneCespiti.Managers
             {
                 DataGridViewColumn column;
 
-                if (colName == "Causa dismissione")
+                if (colName == CauseDismissioneColumn || colName == TipoAssetColumn)
                 {
+                    var options = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    if (colName == CauseDismissioneColumn)
+                    {
+                        options.UnionWith(settings.CauseDismissioneOptions);
+                    }
+                    else
+                    {
+                        options.UnionWith(settings.TipoAssetOptions);
+                        options.Add(CustomOptionLabel);
+                    }
+
+                    foreach (var asset in sheet.Rows)
+                    {
+                        var value = asset[colName];
+                        if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            options.Add(value);
+                        }
+                    }
+
                     var comboColumn = new DataGridViewComboBoxColumn
                     {
                         HeaderText = colName,
@@ -82,7 +106,7 @@ namespace GestioneCespiti.Managers
                         DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton
                     };
 
-                    foreach (var option in _appSettings.CauseDismissioneOptions)
+                    foreach (var option in options.OrderBy(option => option))
                     {
                         comboColumn.Items.Add(option);
                     }
@@ -107,18 +131,23 @@ namespace GestioneCespiti.Managers
             grid.CellValueChanged -= Grid_CellValueChanged;
             grid.CellClick -= Grid_CellClick;
             grid.EditingControlShowing -= Grid_EditingControlShowing;
+            grid.CellBeginEdit -= Grid_CellBeginEdit;
+            grid.DataError -= Grid_DataError;
 
             if (!_isReadOnly)
             {
                 grid.CellValueChanged += Grid_CellValueChanged;
                 grid.CellClick += Grid_CellClick;
                 grid.EditingControlShowing += Grid_EditingControlShowing;
+                grid.CellBeginEdit += Grid_CellBeginEdit;
             }
             else
             {
                 grid.DefaultCellStyle.BackColor = Color.WhiteSmoke;
                 grid.DefaultCellStyle.ForeColor = Color.DarkGray;
             }
+
+            grid.DataError += Grid_DataError;
         }
 
         private void Grid_CellClick(object? sender, DataGridViewCellEventArgs e)
@@ -145,10 +174,22 @@ namespace GestioneCespiti.Managers
 
         private void Grid_EditingControlShowing(object? sender, DataGridViewEditingControlShowingEventArgs e)
         {
-            if (e.Control is ComboBox comboBox)
+            if (e.Control is ComboBox comboBox && sender is DataGridView grid)
             {
-                comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+                var columnName = grid.Columns[grid.CurrentCell.ColumnIndex].Name;
+                comboBox.DropDownStyle = columnName == TipoAssetColumn
+                    ? ComboBoxStyle.DropDown
+                    : ComboBoxStyle.DropDownList;
             }
+        }
+
+        private void Grid_CellBeginEdit(object? sender, DataGridViewCellCancelEventArgs e)
+        {
+            if (sender is not DataGridView grid)
+                return;
+
+            var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            cell.Tag = cell.Value;
         }
 
         private void Grid_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
@@ -164,9 +205,39 @@ namespace GestioneCespiti.Managers
                 return;
 
             string colName = sheet.Columns[e.ColumnIndex - 1];
-            string newValue = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString() ?? string.Empty;
+            var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            string newValue = cell.Value?.ToString() ?? string.Empty;
+
+            if (colName == TipoAssetColumn && string.Equals(newValue, CustomOptionLabel, StringComparison.OrdinalIgnoreCase))
+            {
+                string previousValue = cell.Tag?.ToString() ?? string.Empty;
+                cell.Value = previousValue;
+                grid.BeginEdit(true);
+                return;
+            }
 
             CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(sheet, e.RowIndex, colName, newValue));
+        }
+
+        private void Grid_DataError(object? sender, DataGridViewDataErrorEventArgs e)
+        {
+            e.ThrowException = false;
+
+            if (sender is not DataGridView grid)
+            {
+                Logger.LogWarning("Errore DataGridView: sender non valido");
+                return;
+            }
+
+            if (grid.Tag is AssetSheet sheet && e.RowIndex >= 0 && e.ColumnIndex > 0 && e.ColumnIndex - 1 < sheet.Columns.Count)
+            {
+                string columnName = sheet.Columns[e.ColumnIndex - 1];
+                string currentValue = sheet.Rows[e.RowIndex][columnName];
+                Logger.LogWarning($"Valore non valido per colonna '{columnName}': '{currentValue}'");
+                return;
+            }
+
+            Logger.LogWarning($"Errore DataGridView: {e.Exception?.Message}");
         }
     }
 

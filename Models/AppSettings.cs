@@ -5,7 +5,7 @@ namespace GestioneCespiti.Models
 {
     public class AppSettings
     {
-        private static readonly List<string> DefaultOptions = new List<string>
+        private static readonly List<string> DefaultCauseDismissioneOptions = new List<string>
         {
             "Obsolescenza",
             "Guasto",
@@ -13,20 +13,22 @@ namespace GestioneCespiti.Models
         };
 
         public List<string> CauseDismissioneOptions { get; set; }
+        public List<string> TipoAssetOptions { get; set; }
 
         public AppSettings()
         {
-            CauseDismissioneOptions = new List<string>(DefaultOptions);
+            CauseDismissioneOptions = new List<string>(DefaultCauseDismissioneOptions);
+            TipoAssetOptions = new List<string>();
         }
 
         public static bool IsDefaultOption(string option)
         {
-            return DefaultOptions.Any(o => o.Equals(option, System.StringComparison.OrdinalIgnoreCase));
+            return DefaultCauseDismissioneOptions.Any(o => o.Equals(option, System.StringComparison.OrdinalIgnoreCase));
         }
 
         public static List<string> GetDefaultOptions()
         {
-            return new List<string>(DefaultOptions);
+            return new List<string>(DefaultCauseDismissioneOptions);
         }
     }
 }

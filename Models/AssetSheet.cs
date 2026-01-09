@@ -56,7 +56,7 @@ namespace GestioneCespiti.Models
                     "Marca",
                     "Modello",
                     "Seriale",
-                    "Rif inv biofer",
+                    "Rif inventario",
                     "Descrizione",
                     "Causa dismissione"
                 }
