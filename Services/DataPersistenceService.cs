@@ -88,7 +88,9 @@ namespace GestioneCespiti.Services
                         sheet.Rows = new List<Asset>();
                     }
 
+                    NormalizeRows(sheet, filePath);
                     NormalizeColumns(sheet);
+                    RemoveDuplicateColumns(sheet, filePath);
 
                     sheet.FileName = Path.GetFileName(filePath);
                     sheet.IsArchived = isArchived;
@@ -313,6 +315,11 @@ namespace GestioneCespiti.Services
 
             foreach (var asset in sheet.Rows)
             {
+                if (asset.Values == null)
+                {
+                    asset.Values = new Dictionary<string, string>();
+                }
+
                 if (!asset.Values.TryGetValue(legacyColumn, out var legacyValue))
                     continue;
 
@@ -322,6 +329,59 @@ namespace GestioneCespiti.Services
                 }
 
                 asset.Values.Remove(legacyColumn);
+            }
+        }
+
+        private static void NormalizeRows(AssetSheet sheet, string filePath)
+        {
+            if (sheet.Rows == null)
+            {
+                sheet.Rows = new List<Asset>();
+                return;
+            }
+
+            int initialCount = sheet.Rows.Count;
+            sheet.Rows = sheet.Rows.Where(asset => asset != null).ToList();
+
+            if (sheet.Rows.Count != initialCount)
+            {
+                Logger.LogWarning($"Righe nulle rimosse dal foglio: {filePath}");
+            }
+
+            foreach (var asset in sheet.Rows)
+            {
+                if (asset.Values == null)
+                {
+                    asset.Values = new Dictionary<string, string>();
+                }
+            }
+        }
+
+        private static void RemoveDuplicateColumns(AssetSheet sheet, string filePath)
+        {
+            if (sheet.Columns == null || sheet.Columns.Count == 0)
+                return;
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < sheet.Columns.Count; i++)
+            {
+                string column = sheet.Columns[i];
+                if (seen.Add(column))
+                {
+                    continue;
+                }
+
+                Logger.LogWarning($"Colonna duplicata rimossa '{column}' nel file: {filePath}");
+                sheet.Columns.RemoveAt(i);
+                i--;
+
+                if (sheet.Rows == null)
+                    continue;
+
+                foreach (var asset in sheet.Rows)
+                {
+                    asset.Values?.Remove(column);
+                }
             }
         }
     }
