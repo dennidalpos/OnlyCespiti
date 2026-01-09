@@ -2,25 +2,27 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using GestioneCespiti.Models;
-
 namespace GestioneCespiti.Forms.Dialogs
 {
     public class OptionsDialog : Form
     {
         private readonly ListBox listBox;
-        private readonly AppSettings _settings;
+        private readonly List<string> _options;
+        private readonly Func<string, bool>? _isProtectedOption;
 
-        public OptionsDialog(AppSettings settings)
+        public OptionsDialog(string title, string labelText, List<string> options, Func<string, bool>? isProtectedOption = null)
         {
-            _settings = settings;
+            _options = options;
+            _isProtectedOption = isProtectedOption;
 
-            _settings.CauseDismissioneOptions = _settings.CauseDismissioneOptions
+            var sanitizedOptions = _options
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            _options.Clear();
+            _options.AddRange(sanitizedOptions);
 
-            Text = "Gestisci Opzioni Causa Dismissione";
+            Text = title;
             Size = new Size(450, 350);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -29,7 +31,7 @@ namespace GestioneCespiti.Forms.Dialogs
 
             var label = new Label
             {
-                Text = "Opzioni disponibili per 'Causa dismissione':",
+                Text = labelText,
                 Location = new Point(10, 10),
                 Size = new Size(420, 20)
             };
@@ -81,7 +83,7 @@ namespace GestioneCespiti.Forms.Dialogs
         {
             listBox.BeginUpdate();
             listBox.Items.Clear();
-            foreach (var option in _settings.CauseDismissioneOptions)
+            foreach (var option in _options)
             {
                 listBox.Items.Add(option);
             }
@@ -96,9 +98,9 @@ namespace GestioneCespiti.Forms.Dialogs
                 {
                     string newOption = inputDialog.InputText.Trim();
                     if (!string.IsNullOrWhiteSpace(newOption) &&
-                        !_settings.CauseDismissioneOptions.Contains(newOption, StringComparer.OrdinalIgnoreCase))
+                        !_options.Contains(newOption, StringComparer.OrdinalIgnoreCase))
                     {
-                        _settings.CauseDismissioneOptions.Add(newOption);
+                        _options.Add(newOption);
                         RefreshList();
                     }
                 }
@@ -112,7 +114,7 @@ namespace GestioneCespiti.Forms.Dialogs
 
             string selected = listBox.SelectedItem.ToString()!;
 
-            if (AppSettings.IsDefaultOption(selected))
+            if (_isProtectedOption != null && _isProtectedOption(selected))
             {
                 MessageBox.Show(
                     $"Non puoi rimuovere l'opzione di default '{selected}'.",
@@ -130,7 +132,7 @@ namespace GestioneCespiti.Forms.Dialogs
 
             if (result == DialogResult.Yes)
             {
-                _settings.CauseDismissioneOptions.Remove(selected);
+                _options.Remove(selected);
                 RefreshList();
             }
         }

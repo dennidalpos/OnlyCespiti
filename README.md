@@ -69,7 +69,7 @@ OnlyCespiti/
 2. Marca
 3. Modello
 4. Seriale
-5. Rif inv biofer
+5. Rif inventario
 6. Descrizione
 7. Causa dismissione (campo dropdown configurabile)
 
@@ -101,6 +101,7 @@ L'applicazione è organizzata in menu logici per funzione:
 ### 🔧 Strumenti
 - **Gestione Colonne** - Menu per configurare colonne con dropdown
   - **Causa Dismissione** (Ctrl+O) - Gestisce le opzioni del dropdown "Causa dismissione"
+  - **Tipo Asset** (Ctrl+T) - Gestisce le opzioni del dropdown "Tipo asset" con voce "Personalizza..."
   - *(Altre colonne future potranno essere aggiunte qui)*
 
 ### 🔍 Ricerca
@@ -168,29 +169,6 @@ Se ricevi errore "non contiene alcun file di progetto o di soluzione":
 - Lock pattern per thread safety
 - File transazionali per salvataggio sicuro (file.tmp → file, con backup)
 - Rotazione automatica log quando supera 10MB
-
-## Miglioramenti Recenti
-
-### Riorganizzazione Codice (2025-12-07)
-1. ✅ Separazione dialogs in file distinti
-2. ✅ Spostamento SearchResult nel namespace Models
-3. ✅ Rinomina MainForm_Designer.cs → MainForm.Designer.cs (convenzione .NET)
-4. ✅ Organizzazione cartelle per tipo (Forms, Models, Services)
-5. ✅ Creazione cartelle Properties e Scripts
-6. ✅ Aggiunta .gitignore
-
-### Miglioramenti UX e Menu (2025-12-07)
-1. ✅ **Numerazione Righe**: Aggiunta colonna "#" automatica con numerazione progressiva
-2. ✅ **Ricerca Migliorata**: Premi Invio per cercare o andare al risultato successivo
-3. ✅ **Riorganizzazione Menu**: Menu divisi logicamente per funzione
-   - File: operazioni su file
-   - Riga: gestione righe
-   - Colonna: gestione colonne
-   - Foglio: operazioni sui fogli
-   - Archiviazione: gestione archivio
-   - Strumenti: configurazione avanzata
-4. ✅ **Menu Gestione Colonne**: Sottomenu strutturato per future colonne con dropdown
-5. ✅ **UI Migliorata**: Tooltip informativi e simboli più chiari (► per successivo)
 
 ## Licenza
 

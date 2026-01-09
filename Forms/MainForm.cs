@@ -399,11 +399,12 @@ namespace GestioneCespiti
             var grid = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 ReadOnly = _isReadOnly,
-                Tag = sheet
+                Tag = sheet,
+                EditMode = DataGridViewEditMode.EditOnEnter
             };
 
             _gridManager?.BindGridToSheet(grid, sheet);
@@ -933,7 +934,11 @@ namespace GestioneCespiti
         {
             if (_isReadOnly) return;
 
-            using (var optionsDialog = new OptionsDialog(_appSettings))
+            using (var optionsDialog = new OptionsDialog(
+                "Gestisci Opzioni Causa Dismissione",
+                "Opzioni disponibili per 'Causa dismissione':",
+                _appSettings.CauseDismissioneOptions,
+                AppSettings.IsDefaultOption))
             {
                 if (optionsDialog.ShowDialog() == DialogResult.OK)
                 {
@@ -947,6 +952,33 @@ namespace GestioneCespiti
                     catch (Exception ex)
                     {
                         Logger.LogError("Errore salvataggio opzioni", ex);
+                        MessageBox.Show($"Errore durante il salvataggio:\n{ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void btnManageTipoAsset_Click(object? sender, EventArgs e)
+        {
+            if (_isReadOnly) return;
+
+            using (var optionsDialog = new OptionsDialog(
+                "Gestisci Opzioni Tipo Asset",
+                "Opzioni disponibili per 'Tipo asset':",
+                _appSettings.TipoAssetOptions))
+            {
+                if (optionsDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        _settingsService.SaveSettings(_appSettings);
+                        _statusManager?.UpdateStatus("Opzioni salvate", Color.Green);
+                        MessageBox.Show("Impostazioni salvate con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        RefreshAllGrids();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError("Errore salvataggio opzioni tipo asset", ex);
                         MessageBox.Show($"Errore durante il salvataggio:\n{ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }

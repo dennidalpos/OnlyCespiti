@@ -55,6 +55,8 @@ namespace GestioneCespiti.Services
                     }
 
                     settings.CauseDismissioneOptions = SanitizeOptions(settings.CauseDismissioneOptions);
+                    settings.TipoAssetOptions ??= new List<string>();
+                    settings.TipoAssetOptions = SanitizeOptions(settings.TipoAssetOptions);
                     return settings;
                 }
                 
@@ -92,6 +94,8 @@ namespace GestioneCespiti.Services
                 }
 
                 settings.CauseDismissioneOptions = SanitizeOptions(settings.CauseDismissioneOptions);
+                settings.TipoAssetOptions ??= new List<string>();
+                settings.TipoAssetOptions = SanitizeOptions(settings.TipoAssetOptions);
 
                 string json = JsonConvert.SerializeObject(settings, Formatting.Indented);
 

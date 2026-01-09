@@ -35,6 +35,7 @@ namespace GestioneCespiti
         private System.Windows.Forms.ToolStripMenuItem menuTools = null!;
         private System.Windows.Forms.ToolStripMenuItem menuManageColumns = null!;
         private System.Windows.Forms.ToolStripMenuItem menuManageCauseDismissione = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuManageTipoAsset = null!;
 
         // Menu Aiuto
         private System.Windows.Forms.ToolStripMenuItem menuHelp = null!;
@@ -92,6 +93,7 @@ namespace GestioneCespiti
             this.menuTools = new System.Windows.Forms.ToolStripMenuItem();
             this.menuManageColumns = new System.Windows.Forms.ToolStripMenuItem();
             this.menuManageCauseDismissione = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuManageTipoAsset = new System.Windows.Forms.ToolStripMenuItem();
 
             // Menu Aiuto
             this.menuHelp = new System.Windows.Forms.ToolStripMenuItem();
@@ -259,7 +261,16 @@ namespace GestioneCespiti
             this.menuManageCauseDismissione.Text = "Causa Dismissione";
             this.menuManageCauseDismissione.Click += new System.EventHandler(this.btnManageOptions_Click);
 
-            this.menuManageColumns.DropDownItems.Add(this.menuManageCauseDismissione);
+            this.menuManageTipoAsset.Name = "menuManageTipoAsset";
+            this.menuManageTipoAsset.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.T)));
+            this.menuManageTipoAsset.Size = new System.Drawing.Size(280, 26);
+            this.menuManageTipoAsset.Text = "Tipo Asset";
+            this.menuManageTipoAsset.Click += new System.EventHandler(this.btnManageTipoAsset_Click);
+
+            this.menuManageColumns.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+                this.menuManageCauseDismissione,
+                this.menuManageTipoAsset
+            });
 
             // Menu Aiuto
             this.menuHelp.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {

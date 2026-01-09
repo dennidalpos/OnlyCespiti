@@ -88,6 +88,8 @@ namespace GestioneCespiti.Services
                         sheet.Rows = new List<Asset>();
                     }
 
+                    NormalizeColumns(sheet);
+
                     sheet.FileName = Path.GetFileName(filePath);
                     sheet.IsArchived = isArchived;
                     sheets.Add(sheet);
@@ -274,6 +276,53 @@ namespace GestioneCespiti.Services
             safe += "_" + DateTime.Now.ToString("yyyyMMddHHmmss");
 
             return safe;
+        }
+
+        private static void NormalizeColumns(AssetSheet sheet)
+        {
+            const string legacyColumn = "Rif inv biofer";
+            const string updatedColumn = "Rif inventario";
+
+            if (sheet.Columns == null)
+                return;
+
+            bool hasLegacy = sheet.Columns.Any(c => c.Equals(legacyColumn, StringComparison.OrdinalIgnoreCase));
+            if (!hasLegacy)
+                return;
+
+            bool hasUpdated = sheet.Columns.Any(c => c.Equals(updatedColumn, StringComparison.OrdinalIgnoreCase));
+
+            for (int i = 0; i < sheet.Columns.Count; i++)
+            {
+                if (sheet.Columns[i].Equals(legacyColumn, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!hasUpdated)
+                    {
+                        sheet.Columns[i] = updatedColumn;
+                    }
+                    else
+                    {
+                        sheet.Columns.RemoveAt(i);
+                        i--;
+                    }
+                }
+            }
+
+            if (sheet.Rows == null)
+                return;
+
+            foreach (var asset in sheet.Rows)
+            {
+                if (!asset.Values.TryGetValue(legacyColumn, out var legacyValue))
+                    continue;
+
+                if (!asset.Values.ContainsKey(updatedColumn))
+                {
+                    asset.Values[updatedColumn] = legacyValue;
+                }
+
+                asset.Values.Remove(legacyColumn);
+            }
         }
     }
 }
