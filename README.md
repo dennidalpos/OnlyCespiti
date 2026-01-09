@@ -122,6 +122,7 @@ I dati vengono salvati nella cartella `data/` nella directory dell'eseguibile:
 - `data/*.json` - Fogli attivi
 - `data/archived/*.json` - Fogli archiviati
 - `data/config/settings.json` - Impostazioni applicazione
+- `data/config/sheets/*.settings.json` - Impostazioni strumenti per singolo foglio
 - `data/config/lock.json` - File di lock
 - `data/application.log` - Log applicazione
 

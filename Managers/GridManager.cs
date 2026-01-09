@@ -14,18 +14,16 @@ namespace GestioneCespiti.Managers
         private const string TipoAssetColumn = "Tipo asset";
         private const string CustomOptionLabel = "Personalizza...";
 
-        private readonly AppSettings _appSettings;
         private readonly bool _isReadOnly;
 
         public event EventHandler<CellValueChangedEventArgs>? CellValueChanged;
 
-        public GridManager(AppSettings appSettings, bool isReadOnly)
+        public GridManager(bool isReadOnly)
         {
-            _appSettings = appSettings;
             _isReadOnly = isReadOnly;
         }
 
-        public void BindGridToSheet(DataGridView grid, AssetSheet sheet)
+        public void BindGridToSheet(DataGridView grid, AssetSheet sheet, AppSettings settings)
         {
             if (grid.DataSource is DataTable oldTable)
             {
@@ -83,11 +81,11 @@ namespace GestioneCespiti.Managers
                     var options = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     if (colName == CauseDismissioneColumn)
                     {
-                        options.UnionWith(_appSettings.CauseDismissioneOptions);
+                        options.UnionWith(settings.CauseDismissioneOptions);
                     }
                     else
                     {
-                        options.UnionWith(_appSettings.TipoAssetOptions);
+                        options.UnionWith(settings.TipoAssetOptions);
                         options.Add(CustomOptionLabel);
                     }
 
