@@ -61,6 +61,7 @@ namespace GestioneCespiti.Managers
                 Name = "#",
                 DataPropertyName = "#",
                 ReadOnly = true,
+                SortMode = DataGridViewColumnSortMode.NotSortable,
                 Width = 50,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
@@ -103,7 +104,8 @@ namespace GestioneCespiti.Managers
                         HeaderText = colName,
                         Name = colName,
                         DataPropertyName = colName,
-                        DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton
+                        DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton,
+                        SortMode = DataGridViewColumnSortMode.NotSortable
                     };
 
                     foreach (var option in options.OrderBy(option => option))
@@ -119,7 +121,8 @@ namespace GestioneCespiti.Managers
                     {
                         HeaderText = colName,
                         Name = colName,
-                        DataPropertyName = colName
+                        DataPropertyName = colName,
+                        SortMode = DataGridViewColumnSortMode.NotSortable
                     };
                 }
 
