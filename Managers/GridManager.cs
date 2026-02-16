@@ -13,6 +13,10 @@ namespace GestioneCespiti.Managers
     {
         private const string CauseDismissioneColumn = "Causa dismissione";
         private const string TipoAssetColumn = "Tipo asset";
+        private static readonly Color StandardColumnBackColor = Color.FromArgb(232, 242, 255);
+        private static readonly Color StandardColumnSelectionColor = Color.FromArgb(176, 206, 240);
+        private static readonly Color CustomColumnBackColor = Color.FromArgb(238, 255, 238);
+        private static readonly Color CustomColumnSelectionColor = Color.FromArgb(180, 230, 180);
 
         private readonly bool _isReadOnly;
 
@@ -73,8 +77,9 @@ namespace GestioneCespiti.Managers
             };
             grid.Columns.Add(rowNumberColumn);
 
-            foreach (var colName in sheet.Columns)
+            for (int sheetColIndex = 0; sheetColIndex < sheet.Columns.Count; sheetColIndex++)
             {
+                var colName = sheet.Columns[sheetColIndex];
                 DataGridViewColumn column;
 
                 if (colName == CauseDismissioneColumn || colName == TipoAssetColumn)
@@ -83,6 +88,10 @@ namespace GestioneCespiti.Managers
                     if (colName == CauseDismissioneColumn)
                     {
                         options.UnionWith(settings.CauseDismissioneOptions);
+                    }
+                    else if (colName == TipoAssetColumn)
+                    {
+                        options.UnionWith(settings.TipoAssetOptions);
                     }
 
                     foreach (var asset in sheet.Rows)
@@ -120,6 +129,10 @@ namespace GestioneCespiti.Managers
                         SortMode = DataGridViewColumnSortMode.NotSortable
                     };
                 }
+
+                bool isStandardColumn = sheetColIndex < AssetSheet.StandardColumnCount;
+                column.DefaultCellStyle.BackColor = isStandardColumn ? StandardColumnBackColor : CustomColumnBackColor;
+                column.DefaultCellStyle.SelectionBackColor = isStandardColumn ? StandardColumnSelectionColor : CustomColumnSelectionColor;
 
                 grid.Columns.Add(column);
             }

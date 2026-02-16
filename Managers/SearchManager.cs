@@ -22,14 +22,15 @@ namespace GestioneCespiti.Managers
 
         public void PerformSearch(string searchText, bool includeArchived, bool matchCase)
         {
+            _searchResults.Clear();
+            _currentSearchIndex = -1;
+
             if (string.IsNullOrWhiteSpace(searchText))
             {
+                SearchCompleted?.Invoke(this, new SearchCompletedEventArgs(0, false));
                 MessageBox.Show("Inserisci un testo da cercare.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-
-            _searchResults.Clear();
-            _currentSearchIndex = -1;
 
             var allSheets = _persistenceService.LoadAllSheets(includeArchived);
             var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
