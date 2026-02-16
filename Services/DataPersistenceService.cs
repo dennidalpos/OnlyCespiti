@@ -60,20 +60,18 @@ namespace GestioneCespiti.Services
                         continue;
                     }
 
-                    string json = File.ReadAllText(filePath, Encoding.UTF8);
-
-                    if (string.IsNullOrWhiteSpace(json))
+                    if (!TryLoadSheet(filePath, out var sheet))
                     {
-                        Logger.LogWarning($"File vuoto: {filePath}");
-                        continue;
-                    }
-
-                    var sheet = JsonConvert.DeserializeObject<AssetSheet>(json);
-
-                    if (sheet == null)
-                    {
-                        Logger.LogError($"Impossibile deserializzare il file: {filePath}. JSON potrebbe essere corrotto.");
-                        continue;
+                        string backupFile = filePath + ".bak";
+                        if (TryLoadSheet(backupFile, out sheet))
+                        {
+                            Logger.LogWarning($"Recupero foglio da backup: {backupFile}");
+                        }
+                        else
+                        {
+                            Logger.LogError($"Impossibile deserializzare il file: {filePath}. JSON potrebbe essere corrotto.");
+                            continue;
+                        }
                     }
 
                     if (sheet.Columns == null)
@@ -113,6 +111,28 @@ namespace GestioneCespiti.Services
             return sheets;
         }
 
+        private static bool TryLoadSheet(string filePath, out AssetSheet sheet)
+        {
+            sheet = new AssetSheet();
+
+            if (!File.Exists(filePath))
+                return false;
+
+            string json = File.ReadAllText(filePath, Encoding.UTF8);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                Logger.LogWarning($"File vuoto: {filePath}");
+                return false;
+            }
+
+            var deserialized = JsonConvert.DeserializeObject<AssetSheet>(json);
+            if (deserialized == null)
+                return false;
+
+            sheet = deserialized;
+            return true;
+        }
+
         public void SaveSheet(AssetSheet sheet)
         {
             if (sheet == null)
@@ -139,11 +159,6 @@ namespace GestioneCespiti.Services
                 }
 
                 File.Move(tempFile, filePath, true);
-
-                if (File.Exists(filePath + ".bak"))
-                {
-                    File.Delete(filePath + ".bak");
-                }
 
                 Logger.LogInfo($"Foglio salvato: {sheet.Header} -> {filePath}");
             }
@@ -376,6 +391,12 @@ namespace GestioneCespiti.Services
                 i--;
 
                 if (sheet.Rows == null)
+                    continue;
+
+                // Rimuove i valori dal dizionario solo se la colonna non esiste più
+                // (evita perdita dati quando sono presenti colonne duplicate con lo stesso nome).
+                bool stillPresent = sheet.Columns.Any(c => c.Equals(column, StringComparison.OrdinalIgnoreCase));
+                if (stillPresent)
                     continue;
 
                 foreach (var asset in sheet.Rows)

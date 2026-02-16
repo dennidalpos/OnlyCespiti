@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
@@ -12,7 +13,6 @@ namespace GestioneCespiti.Managers
     {
         private const string CauseDismissioneColumn = "Causa dismissione";
         private const string TipoAssetColumn = "Tipo asset";
-        private const string CustomOptionLabel = "Personalizza...";
 
         private readonly bool _isReadOnly;
 
@@ -83,11 +83,6 @@ namespace GestioneCespiti.Managers
                     if (colName == CauseDismissioneColumn)
                     {
                         options.UnionWith(settings.CauseDismissioneOptions);
-                    }
-                    else
-                    {
-                        options.UnionWith(settings.TipoAssetOptions);
-                        options.Add(CustomOptionLabel);
                     }
 
                     foreach (var asset in sheet.Rows)
@@ -179,11 +174,68 @@ namespace GestioneCespiti.Managers
         {
             if (e.Control is ComboBox comboBox && sender is DataGridView grid)
             {
+                if (grid.CurrentCell == null)
+                    return;
+
                 var columnName = grid.Columns[grid.CurrentCell.ColumnIndex].Name;
                 comboBox.DropDownStyle = columnName == TipoAssetColumn
                     ? ComboBoxStyle.DropDown
                     : ComboBoxStyle.DropDownList;
+
+                comboBox.Validating -= TipoAssetComboBox_Validating;
+                comboBox.KeyDown -= TipoAssetComboBox_KeyDown;
+
+                if (columnName == TipoAssetColumn)
+                {
+                    comboBox.Tag = grid;
+                    comboBox.Validating += TipoAssetComboBox_Validating;
+                    comboBox.KeyDown += TipoAssetComboBox_KeyDown;
+                }
             }
+        }
+
+        private void TipoAssetComboBox_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter)
+                return;
+
+            if (sender is not ComboBox comboBox || comboBox.Tag is not DataGridView grid)
+                return;
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            grid.EndEdit();
+        }
+
+        private void TipoAssetComboBox_Validating(object? sender, CancelEventArgs e)
+        {
+            if (sender is not ComboBox comboBox || comboBox.Tag is not DataGridView grid || grid.CurrentCell == null)
+                return;
+
+            int columnIndex = grid.CurrentCell.ColumnIndex;
+            if (columnIndex <= 0 || grid.Columns[columnIndex].Name != TipoAssetColumn)
+                return;
+
+            string typedValue = comboBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(typedValue))
+            {
+                return;
+            }
+
+            if (grid.Columns[columnIndex] is DataGridViewComboBoxColumn comboColumn)
+            {
+                bool exists = comboColumn.Items
+                    .Cast<object>()
+                    .Select(item => item?.ToString() ?? string.Empty)
+                    .Any(item => item.Equals(typedValue, StringComparison.OrdinalIgnoreCase));
+
+                if (!exists)
+                {
+                    comboColumn.Items.Add(typedValue);
+                }
+            }
+
+            grid.CurrentCell.Value = typedValue;
         }
 
         private void Grid_CellBeginEdit(object? sender, DataGridViewCellCancelEventArgs e)
@@ -211,14 +263,6 @@ namespace GestioneCespiti.Managers
             var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
             string newValue = cell.Value?.ToString() ?? string.Empty;
 
-            if (colName == TipoAssetColumn && string.Equals(newValue, CustomOptionLabel, StringComparison.OrdinalIgnoreCase))
-            {
-                string previousValue = cell.Tag?.ToString() ?? string.Empty;
-                cell.Value = previousValue;
-                grid.BeginEdit(true);
-                return;
-            }
-
             CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(sheet, e.RowIndex, colName, newValue));
         }
 
@@ -235,6 +279,33 @@ namespace GestioneCespiti.Managers
             if (grid.Tag is AssetSheet sheet && e.RowIndex >= 0 && e.ColumnIndex > 0 && e.ColumnIndex - 1 < sheet.Columns.Count)
             {
                 string columnName = sheet.Columns[e.ColumnIndex - 1];
+
+                if (string.Equals(columnName, TipoAssetColumn, StringComparison.OrdinalIgnoreCase) &&
+                    grid.EditingControl is ComboBox comboBox)
+                {
+                    string typedValue = comboBox.Text?.Trim() ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(typedValue) &&
+                        typedValue.Length > 0)
+                    {
+                        if (grid.Columns[e.ColumnIndex] is DataGridViewComboBoxColumn comboColumn)
+                        {
+                            bool exists = comboColumn.Items
+                                .Cast<object>()
+                                .Select(item => item?.ToString() ?? string.Empty)
+                                .Any(item => item.Equals(typedValue, StringComparison.OrdinalIgnoreCase));
+
+                            if (!exists)
+                            {
+                                comboColumn.Items.Add(typedValue);
+                            }
+                        }
+
+                        grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = typedValue;
+                        Logger.LogInfo($"Nuovo valore Tipo asset acquisito da input diretto: '{typedValue}'");
+                        return;
+                    }
+                }
+
                 string currentValue = sheet.Rows[e.RowIndex][columnName];
                 Logger.LogWarning($"Valore non valido per colonna '{columnName}': '{currentValue}'");
                 return;

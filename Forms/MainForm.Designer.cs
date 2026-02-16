@@ -45,6 +45,8 @@ namespace GestioneCespiti
         private System.Windows.Forms.ToolStripTextBox searchTextBox = null!;
         private System.Windows.Forms.ToolStripButton searchButton = null!;
         private System.Windows.Forms.ToolStripButton searchNextButton = null!;
+        private System.Windows.Forms.ToolStripButton searchIncludeArchivedToggle = null!;
+        private System.Windows.Forms.ToolStripButton searchCaseSensitiveToggle = null!;
 
         // Controlli principali
         private System.Windows.Forms.TabControl tabControl = null!;
@@ -103,6 +105,8 @@ namespace GestioneCespiti
             this.searchTextBox = new System.Windows.Forms.ToolStripTextBox();
             this.searchButton = new System.Windows.Forms.ToolStripButton();
             this.searchNextButton = new System.Windows.Forms.ToolStripButton();
+            this.searchIncludeArchivedToggle = new System.Windows.Forms.ToolStripButton();
+            this.searchCaseSensitiveToggle = new System.Windows.Forms.ToolStripButton();
 
             // Controlli
             this.tabControl = new System.Windows.Forms.TabControl();
@@ -123,7 +127,9 @@ namespace GestioneCespiti
                 this.menuHelp,
                 this.searchTextBox,
                 this.searchButton,
-                this.searchNextButton
+                this.searchNextButton,
+                this.searchIncludeArchivedToggle,
+                this.searchCaseSensitiveToggle
             });
             this.menuStrip.Location = new System.Drawing.Point(0, 0);
             this.menuStrip.Name = "menuStrip";
@@ -266,10 +272,10 @@ namespace GestioneCespiti
             this.menuManageTipoAsset.Size = new System.Drawing.Size(280, 26);
             this.menuManageTipoAsset.Text = "Tipo Asset";
             this.menuManageTipoAsset.Click += new System.EventHandler(this.btnManageTipoAsset_Click);
+            this.menuManageTipoAsset.Visible = false;
 
             this.menuManageColumns.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.menuManageCauseDismissione,
-                this.menuManageTipoAsset
+                this.menuManageCauseDismissione
             });
 
             // Menu Aiuto
@@ -319,6 +325,27 @@ namespace GestioneCespiti
             this.statusStrip.Name = "statusStrip";
             this.statusStrip.Size = new System.Drawing.Size(1200, 28);
             this.statusStrip.TabIndex = 2;
+
+
+            // searchIncludeArchivedToggle
+            this.searchIncludeArchivedToggle.Name = "searchIncludeArchivedToggle";
+            this.searchIncludeArchivedToggle.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.searchIncludeArchivedToggle.Text = "Includi archiviati";
+            this.searchIncludeArchivedToggle.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.searchIncludeArchivedToggle.CheckOnClick = true;
+            this.searchIncludeArchivedToggle.Checked = true;
+            this.searchIncludeArchivedToggle.ToolTipText = "Include i fogli archiviati nella ricerca";
+            this.searchIncludeArchivedToggle.CheckedChanged += new System.EventHandler(this.searchFilter_CheckedChanged);
+
+            // searchCaseSensitiveToggle
+            this.searchCaseSensitiveToggle.Name = "searchCaseSensitiveToggle";
+            this.searchCaseSensitiveToggle.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.searchCaseSensitiveToggle.Text = "Match case";
+            this.searchCaseSensitiveToggle.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.searchCaseSensitiveToggle.CheckOnClick = true;
+            this.searchCaseSensitiveToggle.Checked = false;
+            this.searchCaseSensitiveToggle.ToolTipText = "Ricerca con distinzione tra maiuscole e minuscole";
+            this.searchCaseSensitiveToggle.CheckedChanged += new System.EventHandler(this.searchFilter_CheckedChanged);
 
             // TabControl
             this.tabControl.Dock = System.Windows.Forms.DockStyle.Fill;

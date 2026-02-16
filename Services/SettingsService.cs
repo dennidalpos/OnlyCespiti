@@ -94,22 +94,21 @@ namespace GestioneCespiti.Services
 
             try
             {
-                string json = File.ReadAllText(settingsFile, Encoding.UTF8);
-                
-                if (string.IsNullOrWhiteSpace(json))
+                if (TryLoadSettings(settingsFile, out var loadedSettings))
                 {
-                    Logger.LogWarning($"File {settingsLabel} vuoto, uso impostazioni di default");
-                    return CreateCopy(defaultSettings);
+                    ApplyDefaults(loadedSettings);
+                    return loadedSettings;
                 }
 
-                var settings = JsonConvert.DeserializeObject<AppSettings>(json);
-                
-                if (settings != null)
+                string backupFile = settingsFile + ".bak";
+                if (TryLoadSettings(backupFile, out loadedSettings))
                 {
-                    ApplyDefaults(settings);
-                    return settings;
+                    Logger.LogWarning($"Recupero da backup per {settingsLabel}: {backupFile}");
+                    ApplyDefaults(loadedSettings);
+                    SaveSettingsToFile(loadedSettings, settingsFile, settingsLabel);
+                    return loadedSettings;
                 }
-                
+
                 Logger.LogWarning($"Deserializzazione {settingsLabel} fallita, uso impostazioni di default");
                 return CreateCopy(defaultSettings);
             }
@@ -149,11 +148,6 @@ namespace GestioneCespiti.Services
 
                 File.Move(tempFile, settingsFile, true);
 
-                if (File.Exists(settingsFile + ".bak"))
-                {
-                    File.Delete(settingsFile + ".bak");
-                }
-
                 Logger.LogInfo($"Impostazioni salvate con successo ({settingsLabel})");
             }
             catch (Exception ex)
@@ -161,6 +155,31 @@ namespace GestioneCespiti.Services
                 Logger.LogError($"Errore salvataggio {settingsLabel}", ex);
                 throw new IOException("Impossibile salvare le impostazioni", ex);
             }
+        }
+
+        private static bool TryLoadSettings(string filePath, out AppSettings settings)
+        {
+            settings = new AppSettings();
+
+            if (!File.Exists(filePath))
+            {
+                return false;
+            }
+
+            string json = File.ReadAllText(filePath, Encoding.UTF8);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return false;
+            }
+
+            var deserialized = JsonConvert.DeserializeObject<AppSettings>(json);
+            if (deserialized == null)
+            {
+                return false;
+            }
+
+            settings = deserialized;
+            return true;
         }
 
         private static void ApplyDefaults(AppSettings settings)
@@ -189,7 +208,9 @@ namespace GestioneCespiti.Services
         {
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             return options
-                .Where(s => !string.IsNullOrWhiteSpace(s) && seen.Add(s))
+                .Where(option => !string.IsNullOrWhiteSpace(option))
+                .Select(option => option.Trim())
+                .Where(option => seen.Add(option))
                 .ToList();
         }
     }

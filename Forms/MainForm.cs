@@ -65,6 +65,7 @@ namespace GestioneCespiti
         private void GridManager_CellValueChanged(object? sender, CellValueChangedEventArgs e)
         {
             e.Sheet.Rows[e.RowIndex][e.ColumnName] = e.NewValue;
+
             _hasUnsavedChanges = true;
 
             lock (_saveLock)
@@ -115,10 +116,20 @@ namespace GestioneCespiti
                                    $"Utente: {lockInfo.UserName}\n" +
                                    $"Computer: {lockInfo.HostName}\n" +
                                    $"Dal: {lockInfo.LockTime:dd/MM/yyyy HH:mm:ss}\n\n" +
-                                   $"L'applicazione sarà aperta in modalità SOLA LETTURA.";
+                                   "Per evitare conflitti, l'applicazione sarà aperta in modalità SOLA LETTURA.";
 
                     MessageBox.Show(message, "Applicazione in Uso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
+                else
+                {
+                    MessageBox.Show(
+                        "Non è stato possibile acquisire il lock esclusivo.\n" +
+                        "L'applicazione verrà aperta in modalità SOLA LETTURA.",
+                        "Lock non disponibile",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+
                 _isReadOnly = true;
             }
         }
@@ -251,10 +262,23 @@ namespace GestioneCespiti
             }
         }
 
+
+        private void searchFilter_CheckedChanged(object? sender, EventArgs e)
+        {
+            var includeArchived = searchIncludeArchivedToggle.Checked ? "ON" : "OFF";
+            var matchCase = searchCaseSensitiveToggle.Checked ? "ON" : "OFF";
+            _statusManager?.UpdateStatus($"Filtri ricerca - Archiviati: {includeArchived}, Match case: {matchCase}", Color.Gray);
+
+            if (_searchManager?.HasResults == true)
+            {
+                searchButton_Click(sender, EventArgs.Empty);
+            }
+        }
+
         private void searchButton_Click(object? sender, EventArgs e)
         {
             string searchText = searchTextBox.Text?.Trim() ?? string.Empty;
-            _searchManager?.PerformSearch(searchText);
+            _searchManager?.PerformSearch(searchText, searchIncludeArchivedToggle.Checked, searchCaseSensitiveToggle.Checked);
         }
 
         private void searchNextButton_Click(object? sender, EventArgs e)
@@ -309,12 +333,19 @@ namespace GestioneCespiti
                 if (grid != null)
                 {
                     int colIndex = result.Sheet.Columns.IndexOf(result.ColumnName);
-                    if (colIndex >= 0 && result.RowIndex < grid.Rows.Count)
+                    bool rowInRange = result.RowIndex >= 0 && result.RowIndex < grid.Rows.Count;
+                    bool columnInRange = colIndex >= 0 && (colIndex + 1) < grid.Columns.Count;
+
+                    if (rowInRange && columnInRange)
                     {
                         grid.ClearSelection();
                         grid.Rows[result.RowIndex].Cells[colIndex + 1].Selected = true;
                         grid.FirstDisplayedScrollingRowIndex = result.RowIndex;
                         grid.Focus();
+                    }
+                    else
+                    {
+                        _statusManager?.UpdateStatus("Risultato non più disponibile: struttura foglio cambiata", Color.DarkOrange);
                     }
                 }
             }
@@ -752,6 +783,12 @@ namespace GestioneCespiti
             }
 
             int sheetColIndex = colIndex - 1;
+
+            if (sheetColIndex < 0 || sheetColIndex >= sheet.Columns.Count)
+            {
+                MessageBox.Show("Colonna non valida o non più disponibile.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             if (sheetColIndex < AssetSheet.StandardColumnCount)
             {

@@ -1,26 +1,27 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+
 namespace GestioneCespiti.Forms.Dialogs
 {
     public class OptionsDialog : Form
     {
         private readonly ListBox listBox;
-        private readonly List<string> _options;
+        private readonly List<string> _targetOptions;
+        private readonly List<string> _workingOptions;
         private readonly Func<string, bool>? _isProtectedOption;
 
         public OptionsDialog(string title, string labelText, List<string> options, Func<string, bool>? isProtectedOption = null)
         {
-            _options = options;
+            _targetOptions = options;
             _isProtectedOption = isProtectedOption;
-
-            var sanitizedOptions = _options
+            _workingOptions = options
                 .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
-            _options.Clear();
-            _options.AddRange(sanitizedOptions);
 
             Text = title;
             Size = new Size(450, 350);
@@ -79,11 +80,22 @@ namespace GestioneCespiti.Forms.Dialogs
             Controls.AddRange(new Control[] { label, listBox, btnAdd, btnRemove, btnOk, btnCancel });
         }
 
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (DialogResult == DialogResult.OK)
+            {
+                _targetOptions.Clear();
+                _targetOptions.AddRange(_workingOptions);
+            }
+
+            base.OnFormClosing(e);
+        }
+
         private void RefreshList()
         {
             listBox.BeginUpdate();
             listBox.Items.Clear();
-            foreach (var option in _options)
+            foreach (var option in _workingOptions)
             {
                 listBox.Items.Add(option);
             }
@@ -98,9 +110,9 @@ namespace GestioneCespiti.Forms.Dialogs
                 {
                     string newOption = inputDialog.InputText.Trim();
                     if (!string.IsNullOrWhiteSpace(newOption) &&
-                        !_options.Contains(newOption, StringComparer.OrdinalIgnoreCase))
+                        !_workingOptions.Contains(newOption, StringComparer.OrdinalIgnoreCase))
                     {
-                        _options.Add(newOption);
+                        _workingOptions.Add(newOption);
                         RefreshList();
                     }
                 }
@@ -132,7 +144,7 @@ namespace GestioneCespiti.Forms.Dialogs
 
             if (result == DialogResult.Yes)
             {
-                _options.Remove(selected);
+                _workingOptions.RemoveAll(option => option.Equals(selected, StringComparison.OrdinalIgnoreCase));
                 RefreshList();
             }
         }
