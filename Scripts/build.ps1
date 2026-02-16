@@ -2,52 +2,53 @@ param(
     [ValidateSet('win-x64','win-x86','win-arm64')]
     [string]$Runtime = 'win-x64',
 
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Release',
+
     [switch]$SelfContained,
     [switch]$FrameworkDependent,
     [switch]$SkipRestore,
     [switch]$NoClean,
-    [switch]$CleanOnly
+    [switch]$CleanOnly,
+    [switch]$NoPublish
 )
 
 $ErrorActionPreference = 'Stop'
 
 function Write-Info([string]$message) { Write-Host $message -ForegroundColor Cyan }
 function Write-Ok([string]$message) { Write-Host $message -ForegroundColor Green }
-function Write-Warn([string]$message) { Write-Host $message -ForegroundColor Yellow }
 
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptPath
+$projectFile = Join-Path $projectRoot 'GestioneCespiti.csproj'
+$cleanScript = Join-Path $scriptPath 'clean.ps1'
+
 Set-Location $projectRoot
 
-$projectFile = Join-Path $projectRoot 'GestioneCespiti.csproj'
 if (-not (Test-Path $projectFile)) {
     throw "File progetto non trovato: $projectFile"
+}
+
+if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+    throw 'dotnet non trovato nel PATH. Installa .NET SDK 8 o superiore.'
 }
 
 if ($SelfContained -and $FrameworkDependent) {
     throw 'Usa solo uno tra -SelfContained e -FrameworkDependent.'
 }
 
-$publishSelfContained = $true
-if ($FrameworkDependent) { $publishSelfContained = $false }
-
-function Invoke-Clean {
-    Write-Info 'Pulizia cartelle di build...'
-    $paths = @('bin', 'obj', 'publish')
-    foreach ($path in $paths) {
-        if (Test-Path $path) {
-            Remove-Item -Path $path -Recurse -Force
-            Write-Ok "Rimosso: $path"
-        }
-    }
-}
+$publishSelfContained = -not $FrameworkDependent
 
 Write-Info 'Verifica dotnet SDK...'
 $dotnetVersion = dotnet --version
 Write-Ok ".NET SDK: $dotnetVersion"
 
 if (-not $NoClean -or $CleanOnly) {
-    Invoke-Clean
+    if (-not (Test-Path $cleanScript)) {
+        throw "Script clean non trovato: $cleanScript"
+    }
+
+    & $cleanScript
 }
 
 if ($CleanOnly) {
@@ -61,33 +62,39 @@ if (-not $SkipRestore) {
     Write-Ok 'Restore completato.'
 }
 
-Write-Info 'dotnet build Release...'
+Write-Info "dotnet build $Configuration..."
 if ($SkipRestore) {
-    dotnet build $projectFile -c Release --no-restore
-} else {
-    dotnet build $projectFile -c Release
+    dotnet build $projectFile -c $Configuration --no-restore
+}
+else {
+    dotnet build $projectFile -c $Configuration
 }
 Write-Ok 'Build completata.'
 
+if ($NoPublish) {
+    Write-Ok 'Publish saltato (NoPublish).'
+    exit 0
+}
+
 $publishDir = Join-Path $projectRoot "publish/$Runtime"
-$newPublishDir = $publishDir
 
 Write-Info 'dotnet publish...'
 if ($publishSelfContained) {
-    dotnet publish $projectFile -c Release -r $Runtime --self-contained true `
+    dotnet publish $projectFile -c $Configuration -r $Runtime --self-contained true `
         /p:PublishSingleFile=true `
         /p:IncludeNativeLibrariesForSelfExtract=true `
         /p:EnableCompressionInSingleFile=true `
-        -o $newPublishDir
-} else {
-    dotnet publish $projectFile -c Release -r $Runtime --self-contained false `
+        -o $publishDir
+}
+else {
+    dotnet publish $projectFile -c $Configuration -r $Runtime --self-contained false `
         /p:PublishSingleFile=true `
         /p:EnableCompressionInSingleFile=true `
-        -o $newPublishDir
+        -o $publishDir
 }
 Write-Ok 'Publish completato.'
 
-$dataFolder = Join-Path $newPublishDir 'data'
+$dataFolder = Join-Path $publishDir 'data'
 $configFolder = Join-Path $dataFolder 'config'
 $archivedFolder = Join-Path $dataFolder 'archived'
 $sheetSettingsFolder = Join-Path $configFolder 'sheets'
@@ -101,9 +108,9 @@ foreach ($dir in @($dataFolder, $configFolder, $archivedFolder, $sheetSettingsFo
 Write-Ok 'Struttura cartelle dati pronta.'
 Write-Host ''
 Write-Host 'Output publish:' -ForegroundColor Yellow
-Write-Host "  $newPublishDir" -ForegroundColor White
+Write-Host "  $publishDir" -ForegroundColor White
 Write-Host ''
-Get-ChildItem $newPublishDir -File | Sort-Object Length -Descending | Select-Object -First 10 | ForEach-Object {
+Get-ChildItem $publishDir -File | Sort-Object Length -Descending | Select-Object -First 10 | ForEach-Object {
     $sizeMB = [math]::Round($_.Length / 1MB, 2)
     Write-Host ("  - {0} ({1} MB)" -f $_.Name, $sizeMB) -ForegroundColor Gray
 }

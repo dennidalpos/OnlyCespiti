@@ -68,7 +68,17 @@ namespace GestioneCespiti.Services
                     worksheet.Columns().AdjustToContents();
                     worksheet.SheetView.FreezeRows(1);
 
-                    workbook.SaveAs(filePath);
+                    var tempFilePath = filePath + ".tmp";
+                    workbook.SaveAs(tempFilePath);
+
+                    if (File.Exists(filePath))
+                    {
+                        var backupFilePath = filePath + ".bak";
+                        File.Copy(filePath, backupFilePath, true);
+                        File.Delete(filePath);
+                    }
+
+                    File.Move(tempFilePath, filePath);
                     Logger.LogInfo($"Export Excel completato: {filePath}");
                 }
             }
