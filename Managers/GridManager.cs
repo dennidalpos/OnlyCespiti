@@ -294,6 +294,33 @@ namespace GestioneCespiti.Managers
             if (grid.Tag is AssetSheet sheet && e.RowIndex >= 0 && e.ColumnIndex > 0 && e.ColumnIndex - 1 < sheet.Columns.Count)
             {
                 string columnName = sheet.Columns[e.ColumnIndex - 1];
+
+                if (string.Equals(columnName, TipoAssetColumn, StringComparison.OrdinalIgnoreCase) &&
+                    grid.EditingControl is ComboBox comboBox)
+                {
+                    string typedValue = comboBox.Text?.Trim() ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(typedValue) &&
+                        !string.Equals(typedValue, CustomOptionLabel, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (grid.Columns[e.ColumnIndex] is DataGridViewComboBoxColumn comboColumn)
+                        {
+                            bool exists = comboColumn.Items
+                                .Cast<object>()
+                                .Select(item => item?.ToString() ?? string.Empty)
+                                .Any(item => item.Equals(typedValue, StringComparison.OrdinalIgnoreCase));
+
+                            if (!exists)
+                            {
+                                comboColumn.Items.Add(typedValue);
+                            }
+                        }
+
+                        grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = typedValue;
+                        Logger.LogInfo($"Nuovo valore Tipo asset acquisito da input diretto: '{typedValue}'");
+                        return;
+                    }
+                }
+
                 string currentValue = sheet.Rows[e.RowIndex][columnName];
                 Logger.LogWarning($"Valore non valido per colonna '{columnName}': '{currentValue}'");
                 return;
