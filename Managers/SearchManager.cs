@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
 using GestioneCespiti.Models;
 using GestioneCespiti.Services;
@@ -22,7 +20,7 @@ namespace GestioneCespiti.Managers
             _persistenceService = persistenceService;
         }
 
-        public void PerformSearch(string searchText)
+        public void PerformSearch(string searchText, bool includeArchived, bool matchCase)
         {
             if (string.IsNullOrWhiteSpace(searchText))
             {
@@ -33,7 +31,8 @@ namespace GestioneCespiti.Managers
             _searchResults.Clear();
             _currentSearchIndex = -1;
 
-            var allSheets = _persistenceService.LoadAllSheets(true);
+            var allSheets = _persistenceService.LoadAllSheets(includeArchived);
+            var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
             foreach (var sheet in allSheets)
             {
@@ -43,7 +42,7 @@ namespace GestioneCespiti.Managers
                     foreach (var column in sheet.Columns)
                     {
                         string value = asset[column];
-                        if (value.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (value.IndexOf(searchText, comparison) >= 0)
                         {
                             _searchResults.Add(new SearchResult
                             {

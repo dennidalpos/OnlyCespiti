@@ -1,105 +1,173 @@
 # GestioneCespiti - Dismissioni
 
-Applicazione desktop Windows (WinForms) per la gestione dei cespiti e delle dismissioni, con supporto per archiviazione fogli, esportazione in Excel e gestione di opzioni configurabili per alcune colonne. Il progetto è basato su .NET 8 e salva i dati localmente in formato JSON.
+Applicazione desktop WinForms (`net8.0-windows`) per la gestione dei cespiti da dismettere, con salvataggio locale in JSON, gestione fogli archiviati, ricerca globale e export Excel.
 
-## Funzionalità principali
+## Obiettivo applicativo
 
-- **Gestione fogli**: crea, rinomina, salva, elimina e archivia fogli di dismissione.
-- **Ricerca globale**: cerca su tutti i fogli, inclusi quelli archiviati.
-- **Esportazione Excel**: esporta un foglio in formato `.xlsx`.
-- **Opzioni configurabili**: gestione di opzioni per colonne come "Causa dismissione" e "Tipo asset".
-- **Modalità sola lettura**: blocco applicazione per evitare modifiche simultanee su più istanze.
+L’applicazione è pensata per gestire più “fogli” di lavoro indipendenti (es. per mese o per reparto), ciascuno con:
 
-## Requisiti
+- intestazione del foglio,
+- set di colonne standard + colonne custom,
+- righe di cespiti,
+- opzioni contestuali per i campi a scelta.
 
-- **Windows** (l'app è una WinForms `net8.0-windows`).
-- **.NET SDK 8** per compilare dal sorgente.
+## Architettura logica
 
-## Struttura dati e cartelle
+### Livello UI
 
-Alla prima esecuzione l'app crea una cartella `data` nella stessa directory dell'eseguibile:
+- `Forms/MainForm.cs`: orchestrazione principale (tab fogli, comandi menu, ricerca, stato, lock, autosalvataggio).
+- `Forms/Dialogs/*.cs`: dialog secondari (archivio, opzioni, input, about).
 
-```
+### Livello gestione dati e logica
+
+- `Services/DataPersistenceService.cs`: carica/salva fogli JSON, archivia/ripristina/elimina.
+- `Services/SettingsService.cs`: gestione impostazioni globali e per-foglio.
+- `Services/ExcelExportService.cs`: export `.xlsx`.
+- `Services/LockService.cs`: lock applicativo per modalità sola lettura in seconda istanza.
+- `Managers/GridManager.cs`: binding DataGridView + gestione combo/editing.
+- `Managers/SearchManager.cs`: ricerca multi-foglio con filtri.
+
+## Cartelle dati runtime
+
+Alla prima esecuzione vengono usate/CREATE queste cartelle nella directory dell’eseguibile:
+
+```text
 data/
   application.log
   config/
     settings.json
+    settings.json.bak
     sheets/
       <nome_foglio>.settings.json
+      <nome_foglio>.settings.json.bak
     lock.json
   archived/
-  *.json
+  <foglio>.json
+  <foglio>.json.bak
 ```
+
+### Significato
 
 - `data/*.json`: fogli attivi.
 - `data/archived/*.json`: fogli archiviati.
+- `*.bak`: backup di sicurezza mantenuti per recupero automatico.
 - `data/config/settings.json`: impostazioni globali.
-- `data/config/sheets/*.settings.json`: impostazioni specifiche del foglio.
-- `data/config/lock.json`: lock per evitare accessi concorrenti.
-- `data/application.log`: log applicazione con rotazione automatica.
+- `data/config/sheets/*.settings.json`: impostazioni per singolo foglio.
 
-## Compilazione
+## Flussi di import/export (aggiornati)
 
-Da **PowerShell** o **Prompt dei comandi**:
+## Import (caricamento)
 
+### Fogli JSON
+
+All’avvio e in ricerca globale:
+
+1. vengono letti i file `.json` nella cartella target;
+2. se un file è vuoto/corrotto, viene tentato il recupero da `.bak`;
+3. il contenuto viene normalizzato:
+   - righe nulle rimosse,
+   - dizionari valori null inizializzati,
+   - colonna legacy `Rif inv biofer` migrata in `Rif inventario`,
+   - colonne duplicate rimosse senza perdita dati residui.
+
+### Impostazioni
+
+Per settings globali e per-foglio:
+
+1. lettura file principale;
+2. fallback su `.bak` in caso di errore;
+3. applicazione default e sanitizzazione opzioni.
+
+## Export (salvataggio)
+
+### Salvataggio fogli
+
+- serializzazione JSON indentata,
+- scrittura su file temporaneo,
+- copia backup del file precedente (`.bak`),
+- replace atomico del file principale.
+
+### Salvataggio impostazioni
+
+Stessa strategia del salvataggio fogli (temp + backup + replace).
+
+### Export Excel
+
+- validazione percorso file e directory,
+- generazione workbook con header formattato,
+- bordi celle, freeze prima riga, autofit colonne,
+- gestione errori I/O con messaggi espliciti.
+
+## Ricerca, filtri e logica checkbox/toggle
+
+Nella toolbar di ricerca sono presenti:
+
+- **Includi archiviati** (toggle): include/esclude i fogli archiviati nel dataset di ricerca.
+- **Match case** (toggle): abilita confronto case-sensitive.
+
+Comportamento:
+
+1. `Invio` nel box ricerca avvia ricerca o passa al risultato successivo.
+2. Se modifichi un toggle con risultati già presenti, la ricerca viene rieseguita automaticamente con i nuovi filtri.
+3. Lo stato in basso mostra i filtri attivi e il conteggio risultati.
+4. Se un risultato diventa obsoleto (struttura foglio cambiata), non viene lanciata eccezione: viene mostrato warning in status bar.
+
+## Gestione opzioni a scelta (combo)
+
+Per colonne:
+
+- `Causa dismissione`
+- `Tipo asset`
+
+la griglia usa combo con elenco opzioni da settings + valori già presenti nei dati.
+
+Nel dialog opzioni:
+
+- le modifiche sono ora transazionali (si applicano solo con `OK`),
+- `Annulla` non altera più la lista originale,
+- deduplica case-insensitive e trim automatico.
+
+## Modalità sola lettura
+
+Se è presente lock attivo da altra istanza:
+
+- l’app viene aperta in sola lettura,
+- i comandi mutanti vengono disabilitati,
+- viene mostrato stato visivo esplicito.
+
+## Script build e clean
+
+In `Scripts/`:
+
+- `build.ps1`: script parametrico per restore/build/publish.
+- `clean.ps1`: pulizia artefatti (`bin`, `obj`, `publish`).
+
+Esempi rapidi:
+
+```powershell
+./Scripts/build.ps1
+./Scripts/build.ps1 -FrameworkDependent
+./Scripts/build.ps1 -Runtime win-arm64
+./Scripts/build.ps1 -CleanOnly
+./Scripts/clean.ps1
 ```
-dotnet build
+
+## Requisiti
+
+- Windows
+- .NET SDK 8+
+- PowerShell (per gli script)
+
+## Avvio
+
+Dalla cartella publish:
+
+```powershell
+./GestioneCespiti.exe
 ```
 
-Per generare un eseguibile pubblicato:
+oppure (framework-dependent):
 
-```
-dotnet publish -c Release -r win-x64 --self-contained false
-```
-
-> Nota: essendo un progetto WinForms, è necessario eseguire su Windows.
-
-## Esecuzione
-
-Avvia l'app dalla cartella di output (es. `bin/Release/net8.0-windows/`):
-
-```
+```powershell
 dotnet GestioneCespiti.dll
 ```
-
-oppure l'eseguibile generato in fase di publish.
-
-## Gestione fogli
-
-Ogni foglio contiene le colonne standard iniziali:
-
-- Tipo asset
-- Marca
-- Modello
-- Seriale
-- Rif inventario
-- Descrizione
-- Causa dismissione
-
-È possibile aggiungere colonne personalizzate, eliminare righe e rinominare il foglio.
-
-## Opzioni configurabili
-
-Le colonne **Causa dismissione** e **Tipo asset** utilizzano liste di opzioni configurabili:
-
-- Opzioni globali in `data/config/settings.json`.
-- Opzioni specifiche per foglio in `data/config/sheets/*.settings.json`.
-
-Le opzioni vengono sanificate (rimozione duplicati/spazi).
-
-## Backup e resilienza dati
-
-- Salvataggi atomici con file temporanei e backup (`.bak`) per fogli e impostazioni.
-- Normalizzazione dati in caricamento (righe nulle e colonne duplicate).
-
-## Log e diagnosi
-
-I log vengono scritti in `data/application.log` con rotazione a 10MB. In caso di errori critici, l'app mostra messaggi a schermo e registra l'eccezione.
-
-## Script utili
-
-Nella cartella `Scripts/` è presente uno script PowerShell di build/publish (`build.ps1`). È utile per automatizzare restore, build e publish.
-
-## Licenza
-
-Non è specificata una licenza nel repository. Se desideri aggiungerla, crea un file `LICENSE` con il testo appropriato.

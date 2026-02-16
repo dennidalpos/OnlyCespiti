@@ -251,10 +251,23 @@ namespace GestioneCespiti
             }
         }
 
+
+        private void searchFilter_CheckedChanged(object? sender, EventArgs e)
+        {
+            var includeArchived = searchIncludeArchivedToggle.Checked ? "ON" : "OFF";
+            var matchCase = searchCaseSensitiveToggle.Checked ? "ON" : "OFF";
+            _statusManager?.UpdateStatus($"Filtri ricerca - Archiviati: {includeArchived}, Match case: {matchCase}", Color.Gray);
+
+            if (_searchManager?.HasResults == true)
+            {
+                searchButton_Click(sender, EventArgs.Empty);
+            }
+        }
+
         private void searchButton_Click(object? sender, EventArgs e)
         {
             string searchText = searchTextBox.Text?.Trim() ?? string.Empty;
-            _searchManager?.PerformSearch(searchText);
+            _searchManager?.PerformSearch(searchText, searchIncludeArchivedToggle.Checked, searchCaseSensitiveToggle.Checked);
         }
 
         private void searchNextButton_Click(object? sender, EventArgs e)

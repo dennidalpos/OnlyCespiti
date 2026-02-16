@@ -28,9 +28,7 @@ namespace GestioneCespiti.Services
 
             try
             {
-                string fullPath = Path.GetFullPath(filePath);
                 string fullDirectory = Path.GetFullPath(directory);
-
                 PathValidator.EnsureDirectoryExists(fullDirectory);
             }
             catch (Exception ex)
@@ -42,7 +40,7 @@ namespace GestioneCespiti.Services
             {
                 using (var workbook = new XLWorkbook())
                 {
-                    var worksheet = workbook.Worksheets.Add("Cespiti");
+                    var worksheet = workbook.Worksheets.Add(BuildSafeWorksheetName(sheet.Header));
 
                     for (int col = 0; col < sheet.Columns.Count; col++)
                     {
@@ -77,13 +75,32 @@ namespace GestioneCespiti.Services
             catch (IOException ex)
             {
                 Logger.LogError($"Errore I/O durante export Excel: {filePath}", ex);
-                throw new IOException($"Impossibile salvare il file Excel. Il file potrebbe essere aperto in un altro programma.", ex);
+                throw new IOException("Impossibile salvare il file Excel. Il file potrebbe essere aperto in un altro programma.", ex);
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Errore durante export Excel: {filePath}", ex);
                 throw new Exception($"Errore durante la creazione del file Excel: {ex.Message}", ex);
             }
+        }
+
+        private static string BuildSafeWorksheetName(string header)
+        {
+            const int maxLen = 31;
+            var invalidChars = new[] { ':', '\\', '/', '?', '*', '[', ']' };
+
+            string name = string.IsNullOrWhiteSpace(header) ? "Cespiti" : header.Trim();
+            foreach (var ch in invalidChars)
+            {
+                name = name.Replace(ch, '_');
+            }
+
+            if (name.Length > maxLen)
+            {
+                name = name.Substring(0, maxLen);
+            }
+
+            return string.IsNullOrWhiteSpace(name) ? "Cespiti" : name;
         }
     }
 }
