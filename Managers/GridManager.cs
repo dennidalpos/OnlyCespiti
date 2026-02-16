@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
@@ -186,7 +187,62 @@ namespace GestioneCespiti.Managers
                 comboBox.DropDownStyle = columnName == TipoAssetColumn
                     ? ComboBoxStyle.DropDown
                     : ComboBoxStyle.DropDownList;
+
+                comboBox.Validating -= TipoAssetComboBox_Validating;
+                comboBox.KeyDown -= TipoAssetComboBox_KeyDown;
+
+                if (columnName == TipoAssetColumn)
+                {
+                    comboBox.Tag = grid;
+                    comboBox.Validating += TipoAssetComboBox_Validating;
+                    comboBox.KeyDown += TipoAssetComboBox_KeyDown;
+                }
             }
+        }
+
+        private void TipoAssetComboBox_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter)
+                return;
+
+            if (sender is not ComboBox comboBox || comboBox.Tag is not DataGridView grid)
+                return;
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            grid.EndEdit();
+        }
+
+        private void TipoAssetComboBox_Validating(object? sender, CancelEventArgs e)
+        {
+            if (sender is not ComboBox comboBox || comboBox.Tag is not DataGridView grid || grid.CurrentCell == null)
+                return;
+
+            int columnIndex = grid.CurrentCell.ColumnIndex;
+            if (columnIndex <= 0 || grid.Columns[columnIndex].Name != TipoAssetColumn)
+                return;
+
+            string typedValue = comboBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(typedValue) ||
+                string.Equals(typedValue, CustomOptionLabel, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (grid.Columns[columnIndex] is DataGridViewComboBoxColumn comboColumn)
+            {
+                bool exists = comboColumn.Items
+                    .Cast<object>()
+                    .Select(item => item?.ToString() ?? string.Empty)
+                    .Any(item => item.Equals(typedValue, StringComparison.OrdinalIgnoreCase));
+
+                if (!exists)
+                {
+                    comboColumn.Items.Add(typedValue);
+                }
+            }
+
+            grid.CurrentCell.Value = typedValue;
         }
 
         private void Grid_CellBeginEdit(object? sender, DataGridViewCellCancelEventArgs e)
