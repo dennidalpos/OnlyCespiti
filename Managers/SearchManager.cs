@@ -20,7 +20,7 @@ namespace GestioneCespiti.Managers
             _persistenceService = persistenceService;
         }
 
-        public void PerformSearch(string searchText, bool includeArchived, bool matchCase)
+        public void PerformSearch(string searchText, bool includeArchived, bool matchCase, bool showUserMessages = true)
         {
             _searchResults.Clear();
             _currentSearchIndex = -1;
@@ -28,7 +28,10 @@ namespace GestioneCespiti.Managers
             if (string.IsNullOrWhiteSpace(searchText))
             {
                 SearchCompleted?.Invoke(this, new SearchCompletedEventArgs(0, false));
-                MessageBox.Show("Inserisci un testo da cercare.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (showUserMessages)
+                {
+                    MessageBox.Show("Inserisci un testo da cercare.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
                 return;
             }
 
@@ -59,7 +62,10 @@ namespace GestioneCespiti.Managers
 
             if (_searchResults.Count == 0)
             {
-                MessageBox.Show($"Nessun risultato trovato per '{searchText}'.", "Ricerca", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (showUserMessages)
+                {
+                    MessageBox.Show($"Nessun risultato trovato per '{searchText}'.", "Ricerca", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
                 SearchCompleted?.Invoke(this, new SearchCompletedEventArgs(0, false));
                 return;
             }

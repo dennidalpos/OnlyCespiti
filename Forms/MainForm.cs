@@ -22,6 +22,7 @@ namespace GestioneCespiti
         private readonly Dictionary<string, AppSettings> _sheetSettings = new Dictionary<string, AppSettings>(StringComparer.OrdinalIgnoreCase);
         private bool _isReadOnly;
         private System.Threading.Timer? _saveTimer;
+        private readonly HashSet<AssetSheet> _pendingAutoSaveSheets = new HashSet<AssetSheet>();
         private readonly object _saveLock = new object();
 
         private SearchManager? _searchManager;
@@ -79,9 +80,10 @@ namespace GestioneCespiti
 
             lock (_saveLock)
             {
+                _pendingAutoSaveSheets.Add(e.Sheet);
                 _saveTimer?.Dispose();
                 _saveTimer = null;
-                _saveTimer = new System.Threading.Timer(SaveTimerCallback, e.Sheet, 2000, Timeout.Infinite);
+                _saveTimer = new System.Threading.Timer(SaveTimerCallback, null, 2000, Timeout.Infinite);
             }
         }
 
@@ -282,16 +284,23 @@ namespace GestioneCespiti
             UpdateSearchToggleVisualState();
             _statusManager?.UpdateStatus($"Filtri ricerca - Archiviati: {includeArchived}, Match case: {matchCase}", Color.Gray);
 
-            if (_searchManager?.HasResults == true)
+            string searchText = searchTextBox.Text?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(searchText))
             {
-                searchButton_Click(sender, EventArgs.Empty);
+                _searchManager?.PerformSearch(searchText, searchIncludeArchivedToggle.Checked, searchCaseSensitiveToggle.Checked, false);
+            }
+            else
+            {
+                searchNextButton.Visible = false;
+                searchTextBox.BackColor = SystemColors.Window;
+                ClearSearchCellHighlight();
             }
         }
 
         private void searchButton_Click(object? sender, EventArgs e)
         {
             string searchText = searchTextBox.Text?.Trim() ?? string.Empty;
-            _searchManager?.PerformSearch(searchText, searchIncludeArchivedToggle.Checked, searchCaseSensitiveToggle.Checked);
+            _searchManager?.PerformSearch(searchText, searchIncludeArchivedToggle.Checked, searchCaseSensitiveToggle.Checked, true);
         }
 
         private void searchNextButton_Click(object? sender, EventArgs e)
@@ -553,21 +562,42 @@ namespace GestioneCespiti
             button.Owner?.Invalidate();
         }
 
+        private static string BuildSafeExportFileName(string header)
+        {
+            var invalidChars = System.IO.Path.GetInvalidFileNameChars();
+            string safeHeader = string.IsNullOrWhiteSpace(header)
+                ? "foglio"
+                : new string(header.Trim().Select(c => invalidChars.Contains(c) ? '_' : c).ToArray());
+
+            if (string.IsNullOrWhiteSpace(safeHeader))
+            {
+                safeHeader = "foglio";
+            }
+
+            return safeHeader + ".xlsx";
+        }
+
         private void SaveTimerCallback(object? state)
         {
             if (_isReadOnly || this.IsDisposed)
                 return;
 
-            if (state is not AssetSheet sheet)
+            List<AssetSheet> sheetsToSave;
+            lock (_saveLock)
             {
-                Logger.LogWarning("SaveTimerCallback chiamato con state invalido");
-                return;
+                sheetsToSave = _pendingAutoSaveSheets.ToList();
+                _pendingAutoSaveSheets.Clear();
             }
+
+            bool allSaved = true;
 
             try
             {
-                _persistenceService.SaveSheet(sheet);
-                Logger.LogInfo($"Salvataggio automatico completato: {sheet.Header}");
+                foreach (var sheet in sheetsToSave)
+                {
+                    _persistenceService.SaveSheet(sheet);
+                    Logger.LogInfo($"Salvataggio automatico completato: {sheet.Header}");
+                }
 
                 _hasUnsavedChanges = false;
 
@@ -577,18 +607,19 @@ namespace GestioneCespiti
                     {
                         if (!this.IsDisposed)
                         {
-                            _statusManager?.UpdateStatus("Salvato automaticamente", Color.Green);
+                            _statusManager?.UpdateStatus("Salvataggio automatico completato", Color.Green);
                         }
                     }));
                 }
                 else if (!this.IsDisposed)
                 {
-                    _statusManager?.UpdateStatus("Salvato automaticamente", Color.Green);
+                    _statusManager?.UpdateStatus("Salvataggio automatico completato", Color.Green);
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Errore salvataggio automatico foglio '{sheet?.Header}'", ex);
+                allSaved = false;
+                Logger.LogError("Errore salvataggio automatico", ex);
 
                 if (!this.IsDisposed && this.InvokeRequired)
                 {
@@ -605,8 +636,23 @@ namespace GestioneCespiti
             {
                 lock (_saveLock)
                 {
+                    if (!allSaved)
+                    {
+                        foreach (var unsavedSheet in sheetsToSave)
+                        {
+                            _pendingAutoSaveSheets.Add(unsavedSheet);
+                        }
+
+                        _hasUnsavedChanges = true;
+                    }
+
                     _saveTimer?.Dispose();
                     _saveTimer = null;
+
+                    if (_pendingAutoSaveSheets.Count > 0 && !_isReadOnly && !this.IsDisposed)
+                    {
+                        _saveTimer = new System.Threading.Timer(SaveTimerCallback, null, 2000, Timeout.Infinite);
+                    }
                 }
             }
         }
@@ -744,7 +790,7 @@ namespace GestioneCespiti
             {
                 sfd.Filter = "File Excel|*.xlsx";
                 sfd.Title = "Esporta in Excel";
-                sfd.FileName = sheet.Header + ".xlsx";
+                sfd.FileName = BuildSafeExportFileName(sheet.Header);
 
                 if (sfd.ShowDialog() == DialogResult.OK)
                 {

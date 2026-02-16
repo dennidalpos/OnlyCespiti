@@ -133,6 +133,62 @@ namespace GestioneCespiti.Services
             return true;
         }
 
+        public AssetSheet ImportSheetFromJson(string importFilePath, bool isArchived = false)
+        {
+            if (string.IsNullOrWhiteSpace(importFilePath))
+                throw new ArgumentException("Percorso file di import non valido", nameof(importFilePath));
+
+            string fullPath = Path.GetFullPath(importFilePath);
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException("File di import non trovato", fullPath);
+
+            if (!TryLoadSheet(fullPath, out var importedSheet))
+                throw new InvalidDataException("Il file selezionato non contiene un foglio valido");
+
+            importedSheet.Rows ??= new List<Asset>();
+            importedSheet.Columns ??= new List<string>();
+
+            NormalizeRows(importedSheet, fullPath);
+            NormalizeColumns(importedSheet);
+            RemoveDuplicateColumns(importedSheet, fullPath);
+
+            importedSheet.IsArchived = isArchived;
+            importedSheet.FileName = GenerateSafeFileName(importedSheet.Header) + ".json";
+
+            SaveSheet(importedSheet);
+            return importedSheet;
+        }
+
+        public void ExportSheetToJson(AssetSheet sheet, string destinationPath)
+        {
+            if (sheet == null)
+                throw new ArgumentNullException(nameof(sheet));
+
+            if (string.IsNullOrWhiteSpace(destinationPath))
+                throw new ArgumentException("Percorso file di export non valido", nameof(destinationPath));
+
+            string fullPath = Path.GetFullPath(destinationPath);
+            string? destinationDirectory = Path.GetDirectoryName(fullPath);
+            if (string.IsNullOrWhiteSpace(destinationDirectory))
+                throw new InvalidOperationException("Impossibile determinare la cartella di destinazione");
+
+            PathValidator.EnsureDirectoryExists(destinationDirectory);
+
+            string tempFile = fullPath + ".tmp";
+            string json = JsonConvert.SerializeObject(sheet, Formatting.Indented);
+            File.WriteAllText(tempFile, json, Encoding.UTF8);
+
+            if (File.Exists(fullPath))
+            {
+                string backupFile = fullPath + ".bak";
+                File.Copy(fullPath, backupFile, true);
+                File.Delete(fullPath);
+            }
+
+            File.Move(tempFile, fullPath);
+            Logger.LogInfo($"Foglio esportato in JSON: {sheet.Header} -> {fullPath}");
+        }
+
         public void SaveSheet(AssetSheet sheet)
         {
             if (sheet == null)
