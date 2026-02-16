@@ -309,12 +309,19 @@ namespace GestioneCespiti
                 if (grid != null)
                 {
                     int colIndex = result.Sheet.Columns.IndexOf(result.ColumnName);
-                    if (colIndex >= 0 && result.RowIndex < grid.Rows.Count)
+                    bool rowInRange = result.RowIndex >= 0 && result.RowIndex < grid.Rows.Count;
+                    bool columnInRange = colIndex >= 0 && (colIndex + 1) < grid.Columns.Count;
+
+                    if (rowInRange && columnInRange)
                     {
                         grid.ClearSelection();
                         grid.Rows[result.RowIndex].Cells[colIndex + 1].Selected = true;
                         grid.FirstDisplayedScrollingRowIndex = result.RowIndex;
                         grid.Focus();
+                    }
+                    else
+                    {
+                        _statusManager?.UpdateStatus("Risultato non più disponibile: struttura foglio cambiata", Color.DarkOrange);
                     }
                 }
             }
@@ -752,6 +759,12 @@ namespace GestioneCespiti
             }
 
             int sheetColIndex = colIndex - 1;
+
+            if (sheetColIndex < 0 || sheetColIndex >= sheet.Columns.Count)
+            {
+                MessageBox.Show("Colonna non valida o non più disponibile.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             if (sheetColIndex < AssetSheet.StandardColumnCount)
             {

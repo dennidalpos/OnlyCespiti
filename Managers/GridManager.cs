@@ -179,6 +179,9 @@ namespace GestioneCespiti.Managers
         {
             if (e.Control is ComboBox comboBox && sender is DataGridView grid)
             {
+                if (grid.CurrentCell == null)
+                    return;
+
                 var columnName = grid.Columns[grid.CurrentCell.ColumnIndex].Name;
                 comboBox.DropDownStyle = columnName == TipoAssetColumn
                     ? ComboBoxStyle.DropDown

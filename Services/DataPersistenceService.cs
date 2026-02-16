@@ -378,6 +378,12 @@ namespace GestioneCespiti.Services
                 if (sheet.Rows == null)
                     continue;
 
+                // Rimuove i valori dal dizionario solo se la colonna non esiste più
+                // (evita perdita dati quando sono presenti colonne duplicate con lo stesso nome).
+                bool stillPresent = sheet.Columns.Any(c => c.Equals(column, StringComparison.OrdinalIgnoreCase));
+                if (stillPresent)
+                    continue;
+
                 foreach (var asset in sheet.Rows)
                 {
                     asset.Values?.Remove(column);
