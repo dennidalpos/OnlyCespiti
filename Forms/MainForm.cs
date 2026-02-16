@@ -66,29 +66,6 @@ namespace GestioneCespiti
         {
             e.Sheet.Rows[e.RowIndex][e.ColumnName] = e.NewValue;
 
-            if (string.Equals(e.ColumnName, "Tipo asset", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(e.NewValue) &&
-                !string.Equals(e.NewValue, "Personalizza...", StringComparison.OrdinalIgnoreCase))
-            {
-                try
-                {
-                    var sheetSettings = GetSheetSettings(e.Sheet);
-                    bool exists = sheetSettings.TipoAssetOptions
-                        .Any(option => option.Equals(e.NewValue, StringComparison.OrdinalIgnoreCase));
-
-                    if (!exists)
-                    {
-                        sheetSettings.TipoAssetOptions.Add(e.NewValue.Trim());
-                        _settingsService.SaveSettingsForSheet(sheetSettings, e.Sheet.FileName);
-                        _sheetSettings[e.Sheet.FileName] = sheetSettings;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning($"Impossibile memorizzare automaticamente l'opzione Tipo asset '{e.NewValue}': {ex.Message}");
-                }
-            }
-
             _hasUnsavedChanges = true;
 
             lock (_saveLock)

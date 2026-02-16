@@ -13,7 +13,6 @@ namespace GestioneCespiti.Managers
     {
         private const string CauseDismissioneColumn = "Causa dismissione";
         private const string TipoAssetColumn = "Tipo asset";
-        private const string CustomOptionLabel = "Personalizza...";
 
         private readonly bool _isReadOnly;
 
@@ -84,11 +83,6 @@ namespace GestioneCespiti.Managers
                     if (colName == CauseDismissioneColumn)
                     {
                         options.UnionWith(settings.CauseDismissioneOptions);
-                    }
-                    else
-                    {
-                        options.UnionWith(settings.TipoAssetOptions);
-                        options.Add(CustomOptionLabel);
                     }
 
                     foreach (var asset in sheet.Rows)
@@ -223,8 +217,7 @@ namespace GestioneCespiti.Managers
                 return;
 
             string typedValue = comboBox.Text?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(typedValue) ||
-                string.Equals(typedValue, CustomOptionLabel, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(typedValue))
             {
                 return;
             }
@@ -270,14 +263,6 @@ namespace GestioneCespiti.Managers
             var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
             string newValue = cell.Value?.ToString() ?? string.Empty;
 
-            if (colName == TipoAssetColumn && string.Equals(newValue, CustomOptionLabel, StringComparison.OrdinalIgnoreCase))
-            {
-                string previousValue = cell.Tag?.ToString() ?? string.Empty;
-                cell.Value = previousValue;
-                grid.BeginEdit(true);
-                return;
-            }
-
             CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(sheet, e.RowIndex, colName, newValue));
         }
 
@@ -300,7 +285,7 @@ namespace GestioneCespiti.Managers
                 {
                     string typedValue = comboBox.Text?.Trim() ?? string.Empty;
                     if (!string.IsNullOrWhiteSpace(typedValue) &&
-                        !string.Equals(typedValue, CustomOptionLabel, StringComparison.OrdinalIgnoreCase))
+                        typedValue.Length > 0)
                     {
                         if (grid.Columns[e.ColumnIndex] is DataGridViewComboBoxColumn comboColumn)
                         {
