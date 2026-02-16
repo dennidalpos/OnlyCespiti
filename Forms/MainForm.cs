@@ -115,10 +115,20 @@ namespace GestioneCespiti
                                    $"Utente: {lockInfo.UserName}\n" +
                                    $"Computer: {lockInfo.HostName}\n" +
                                    $"Dal: {lockInfo.LockTime:dd/MM/yyyy HH:mm:ss}\n\n" +
-                                   $"L'applicazione sarà aperta in modalità SOLA LETTURA.";
+                                   "Per evitare conflitti, l'applicazione sarà aperta in modalità SOLA LETTURA.";
 
                     MessageBox.Show(message, "Applicazione in Uso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
+                else
+                {
+                    MessageBox.Show(
+                        "Non è stato possibile acquisire il lock esclusivo.\n" +
+                        "L'applicazione verrà aperta in modalità SOLA LETTURA.",
+                        "Lock non disponibile",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+
                 _isReadOnly = true;
             }
         }

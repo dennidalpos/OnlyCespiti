@@ -15,6 +15,7 @@ namespace GestioneCespiti.Services
         private readonly string _currentProcessId;
         private const int MaxRetries = 3;
         private const int RetryDelayMs = 100;
+        private static readonly TimeSpan StaleLockMaxAge = TimeSpan.FromHours(12);
 
         public LockService()
         {
@@ -91,9 +92,9 @@ namespace GestioneCespiti.Services
                 }
 
                 var currentLock = GetCurrentLock();
-                if (currentLock != null && !IsProcessStillRunning(currentLock.ProcessId))
+                if (currentLock != null && CanSafelyBreakLock(currentLock))
                 {
-                    Logger.LogWarning($"Lock stale trovato (processo {currentLock.ProcessId} non più attivo). Rimozione...");
+                    Logger.LogWarning($"Lock stale rilevato. Rimozione lock: {currentLock.UserName}@{currentLock.HostName}, PID {currentLock.ProcessId}, dal {currentLock.LockTime}");
 
                     try
                     {
@@ -118,6 +119,26 @@ namespace GestioneCespiti.Services
             }
         }
 
+        private bool CanSafelyBreakLock(AppLock currentLock)
+        {
+            if (currentLock == null)
+                return false;
+
+            bool sameHost = string.Equals(currentLock.HostName, _currentHostName, StringComparison.OrdinalIgnoreCase);
+            if (sameHost)
+            {
+                return !IsProcessStillRunning(currentLock.ProcessId);
+            }
+
+            TimeSpan lockAge = DateTime.Now - currentLock.LockTime;
+            if (lockAge > StaleLockMaxAge)
+            {
+                Logger.LogWarning($"Lock remoto potenzialmente stale ({lockAge.TotalHours:F1}h). Non verrà rimosso automaticamente per sicurezza.");
+            }
+
+            return false;
+        }
+
         public AppLock? GetCurrentLock()
         {
             try
@@ -126,21 +147,21 @@ namespace GestioneCespiti.Services
                     return null;
 
                 string json = File.ReadAllText(_lockFile, Encoding.UTF8);
-                
+
                 if (string.IsNullOrWhiteSpace(json))
                 {
                     Logger.LogWarning("Lock file vuoto");
                     return null;
                 }
-                
+
                 var lockData = JsonConvert.DeserializeObject<AppLock>(json);
-                
+
                 if (lockData == null)
                 {
                     Logger.LogWarning("Lock file corrotto - deserializzazione fallita");
                     return null;
                 }
-                
+
                 return lockData;
             }
             catch (JsonException jsonEx)
@@ -169,7 +190,7 @@ namespace GestioneCespiti.Services
                     Logger.LogWarning("Tentativo di rilascio lock inesistente");
                     return;
                 }
-                
+
                 if (!IsOwnLock())
                 {
                     Logger.LogWarning("Tentativo di rilascio lock non proprio");
@@ -211,12 +232,12 @@ namespace GestioneCespiti.Services
 
                 var process = Process.GetProcessById(processId);
                 bool isRunning = !process.HasExited;
-                
+
                 if (!isRunning)
                 {
                     Logger.LogInfo($"Processo {processId} non più attivo");
                 }
-                
+
                 return isRunning;
             }
             catch (ArgumentException)

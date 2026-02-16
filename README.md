@@ -135,6 +135,14 @@ Se è presente lock attivo da altra istanza:
 - i comandi mutanti vengono disabilitati,
 - viene mostrato stato visivo esplicito.
 
+### Analisi apertura da altri utenti
+
+La gestione lock è stata resa più sicura per scenari multiutente:
+
+- se il lock è sullo **stesso host**, l’app verifica il PID e può recuperare lock orfani locali;
+- se il lock è su **host diverso**, il lock non viene rimosso automaticamente (evita scritture concorrenti e falsi positivi);
+- se il lock non è acquisibile e il dettaglio lock non è leggibile, l’app entra comunque in sola lettura con messaggio esplicito.
+
 ## Script build e clean
 
 In `Scripts/`:
