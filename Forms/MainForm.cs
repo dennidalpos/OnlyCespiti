@@ -34,6 +34,8 @@ namespace GestioneCespiti
         private bool _hasUnsavedChanges = false;
         private static readonly Color ActiveTabColor = Color.FromArgb(210, 233, 255);
         private static readonly Color InactiveTabColor = SystemColors.Control;
+        private const string IncludeArchivedBaseText = "Includi archiviati";
+        private const string MatchCaseBaseText = "Match case";
 
         public MainForm()
         {
@@ -476,7 +478,7 @@ namespace GestioneCespiti
             var grid = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 ReadOnly = _isReadOnly,
@@ -539,14 +541,16 @@ namespace GestioneCespiti
 
         private void UpdateSearchToggleVisualState()
         {
-            SetToggleButtonStyle(searchIncludeArchivedToggle, searchIncludeArchivedToggle.Checked);
-            SetToggleButtonStyle(searchCaseSensitiveToggle, searchCaseSensitiveToggle.Checked);
+            SetToggleButtonStyle(searchIncludeArchivedToggle, IncludeArchivedBaseText, searchIncludeArchivedToggle.Checked);
+            SetToggleButtonStyle(searchCaseSensitiveToggle, MatchCaseBaseText, searchCaseSensitiveToggle.Checked);
         }
 
-        private static void SetToggleButtonStyle(ToolStripButton button, bool isActive)
+        private static void SetToggleButtonStyle(ToolStripButton button, string baseText, bool isActive)
         {
-            button.BackColor = isActive ? Color.LightGreen : SystemColors.Control;
+            button.Text = isActive ? $"✓ {baseText}" : baseText;
+            button.BackColor = isActive ? Color.LightGreen : Color.Transparent;
             button.ForeColor = isActive ? Color.DarkGreen : SystemColors.ControlText;
+            button.Owner?.Invalidate();
         }
 
         private void SaveTimerCallback(object? state)
