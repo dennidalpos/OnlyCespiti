@@ -27,8 +27,15 @@ namespace GestioneCespiti
         private SearchManager? _searchManager;
         private GridManager? _gridManager;
         private StatusManager? _statusManager;
+        private DataGridViewCell? _lastHighlightedSearchCell;
+        private Color _lastSearchCellBackColor = Color.Empty;
+        private Color _lastSearchCellSelectionBackColor = Color.Empty;
 
         private bool _hasUnsavedChanges = false;
+        private static readonly Color ActiveTabColor = Color.FromArgb(210, 233, 255);
+        private static readonly Color InactiveTabColor = SystemColors.Control;
+        private const string IncludeArchivedBaseText = "Includi archiviati";
+        private const string MatchCaseBaseText = "Match case";
 
         public MainForm()
         {
@@ -48,6 +55,8 @@ namespace GestioneCespiti
                 CreateNewSheet();
             }
 
+            ConfigureTabControlRendering();
+            UpdateSearchToggleVisualState();
             UpdateUIForReadOnlyMode();
         }
 
@@ -88,6 +97,7 @@ namespace GestioneCespiti
             {
                 searchNextButton.Visible = false;
                 searchTextBox.BackColor = SystemColors.Window;
+                ClearSearchCellHighlight();
                 _statusManager?.UpdateStatus("Nessun risultato trovato", Color.Gray);
             }
         }
@@ -206,6 +216,8 @@ namespace GestioneCespiti
                 _saveTimer = null;
             }
 
+            ClearSearchCellHighlight();
+
             _statusManager?.Dispose();
 
             if (!_isReadOnly)
@@ -267,6 +279,7 @@ namespace GestioneCespiti
         {
             var includeArchived = searchIncludeArchivedToggle.Checked ? "ON" : "OFF";
             var matchCase = searchCaseSensitiveToggle.Checked ? "ON" : "OFF";
+            UpdateSearchToggleVisualState();
             _statusManager?.UpdateStatus($"Filtri ricerca - Archiviati: {includeArchived}, Match case: {matchCase}", Color.Gray);
 
             if (_searchManager?.HasResults == true)
@@ -338,6 +351,7 @@ namespace GestioneCespiti
 
                     if (rowInRange && columnInRange)
                     {
+                        HighlightSearchCell(grid, result.RowIndex, colIndex + 1);
                         grid.ClearSelection();
                         grid.Rows[result.RowIndex].Cells[colIndex + 1].Selected = true;
                         grid.FirstDisplayedScrollingRowIndex = result.RowIndex;
@@ -349,6 +363,38 @@ namespace GestioneCespiti
                     }
                 }
             }
+        }
+
+        private void HighlightSearchCell(DataGridView grid, int rowIndex, int columnIndex)
+        {
+            ClearSearchCellHighlight();
+
+            if (rowIndex < 0 || columnIndex < 0 || rowIndex >= grid.Rows.Count || columnIndex >= grid.Columns.Count)
+                return;
+
+            var targetCell = grid.Rows[rowIndex].Cells[columnIndex];
+            _lastHighlightedSearchCell = targetCell;
+            _lastSearchCellBackColor = targetCell.Style.BackColor;
+            _lastSearchCellSelectionBackColor = targetCell.Style.SelectionBackColor;
+
+            targetCell.Style.BackColor = Color.Khaki;
+            targetCell.Style.SelectionBackColor = Color.Gold;
+        }
+
+        private void ClearSearchCellHighlight()
+        {
+            if (_lastHighlightedSearchCell == null)
+                return;
+
+            if (_lastHighlightedSearchCell.DataGridView != null)
+            {
+                _lastHighlightedSearchCell.Style.BackColor = _lastSearchCellBackColor;
+                _lastHighlightedSearchCell.Style.SelectionBackColor = _lastSearchCellSelectionBackColor;
+            }
+
+            _lastHighlightedSearchCell = null;
+            _lastSearchCellBackColor = Color.Empty;
+            _lastSearchCellSelectionBackColor = Color.Empty;
         }
 
         private TabPage? FindTabForSheet(AssetSheet sheet)
@@ -447,6 +493,64 @@ namespace GestioneCespiti
             panel.Controls.Add(lblHeader);
             tabPage.Controls.Add(panel);
             tabControl.TabPages.Add(tabPage);
+            tabControl.Invalidate();
+        }
+
+        private void ConfigureTabControlRendering()
+        {
+            tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tabControl.DrawItem -= TabControl_DrawItem;
+            tabControl.DrawItem += TabControl_DrawItem;
+            tabControl.SelectedIndexChanged -= TabControl_SelectedIndexChanged;
+            tabControl.SelectedIndexChanged += TabControl_SelectedIndexChanged;
+            tabControl.Invalidate();
+        }
+
+        private void TabControl_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            tabControl.Invalidate();
+        }
+
+        private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0 || e.Index >= tabControl.TabPages.Count)
+                return;
+
+            var tabPage = tabControl.TabPages[e.Index];
+            var bounds = e.Bounds;
+            bool isSelected = e.Index == tabControl.SelectedIndex;
+
+            using (var backBrush = new SolidBrush(isSelected ? ActiveTabColor : InactiveTabColor))
+            {
+                e.Graphics.FillRectangle(backBrush, bounds);
+            }
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                tabPage.Text,
+                e.Font,
+                bounds,
+                isSelected ? Color.Navy : SystemColors.ControlText,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+            using (var borderPen = new Pen(Color.SteelBlue))
+            {
+                e.Graphics.DrawRectangle(borderPen, bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
+            }
+        }
+
+        private void UpdateSearchToggleVisualState()
+        {
+            SetToggleButtonStyle(searchIncludeArchivedToggle, IncludeArchivedBaseText, searchIncludeArchivedToggle.Checked);
+            SetToggleButtonStyle(searchCaseSensitiveToggle, MatchCaseBaseText, searchCaseSensitiveToggle.Checked);
+        }
+
+        private static void SetToggleButtonStyle(ToolStripButton button, string baseText, bool isActive)
+        {
+            button.Text = isActive ? $"✓ {baseText}" : baseText;
+            button.BackColor = isActive ? Color.LightGreen : Color.Transparent;
+            button.ForeColor = isActive ? Color.DarkGreen : SystemColors.ControlText;
+            button.Owner?.Invalidate();
         }
 
         private void SaveTimerCallback(object? state)
