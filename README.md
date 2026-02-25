@@ -60,6 +60,7 @@ Comportamento predefinito:
 Parametri principali:
 - `-Runtime win-x64|win-x86|win-arm64`
 - `-Configuration Debug|Release`
+- all'avvio, se non specifichi opzioni, lo script chiede in console la modalità publish (SelfContained / FrameworkDependent)
 - `-PublishMode SelfContained|FrameworkDependent` (scelta consigliata da console)
 - `-SelfContained` o `-FrameworkDependent` (compatibilità)
 - `-SkipRestore`

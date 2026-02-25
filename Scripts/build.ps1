@@ -47,6 +47,34 @@ if ($SelfContained) {
 elseif ($FrameworkDependent) {
     $PublishMode = 'FrameworkDependent'
 }
+elseif (-not $PSBoundParameters.ContainsKey('PublishMode')) {
+    Write-Host ''
+    Write-Host 'Seleziona modalità publish:' -ForegroundColor Yellow
+    Write-Host '  1) SelfContained' -ForegroundColor White
+    Write-Host '  2) FrameworkDependent' -ForegroundColor White
+
+    do {
+        $choice = Read-Host 'Scelta [1/2] (default 1)'
+        if ([string]::IsNullOrWhiteSpace($choice)) {
+            $choice = '1'
+        }
+
+        switch ($choice.Trim()) {
+            '1' {
+                $PublishMode = 'SelfContained'
+                $validChoice = $true
+            }
+            '2' {
+                $PublishMode = 'FrameworkDependent'
+                $validChoice = $true
+            }
+            default {
+                $validChoice = $false
+                Write-Host 'Valore non valido. Inserisci 1 oppure 2.' -ForegroundColor Red
+            }
+        }
+    } while (-not $validChoice)
+}
 
 $publishSelfContained = $PublishMode -eq 'SelfContained'
 Write-Info "Modalità publish selezionata: $PublishMode"
