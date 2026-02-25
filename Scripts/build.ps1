@@ -22,6 +22,18 @@ $ErrorActionPreference = 'Stop'
 function Write-Info([string]$message) { Write-Host $message -ForegroundColor Cyan }
 function Write-Ok([string]$message) { Write-Host $message -ForegroundColor Green }
 
+function Invoke-Dotnet {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    & dotnet @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Comando dotnet fallito (exit code $LASTEXITCODE): dotnet $($Arguments -join ' ')"
+    }
+}
+
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptPath
 $projectFile = Join-Path $projectRoot 'GestioneCespiti.csproj'
@@ -110,16 +122,16 @@ if ($CleanOnly) {
 
 if (-not $SkipRestore) {
     Write-Info 'dotnet restore...'
-    dotnet restore $projectFile
+    Invoke-Dotnet @('restore', $projectFile)
     Write-Ok 'Restore completato.'
 }
 
 Write-Info "dotnet build $Configuration..."
 if ($SkipRestore) {
-    dotnet build $projectFile -c $Configuration --no-restore
+    Invoke-Dotnet @('build', $projectFile, '-c', $Configuration, '--no-restore')
 }
 else {
-    dotnet build $projectFile -c $Configuration
+    Invoke-Dotnet @('build', $projectFile, '-c', $Configuration)
 }
 Write-Ok 'Build completata.'
 
@@ -132,17 +144,36 @@ $publishDir = Join-Path $projectRoot "publish/$Runtime"
 
 Write-Info 'dotnet publish...'
 if ($publishSelfContained) {
-    dotnet publish $projectFile -c $Configuration -r $Runtime --self-contained true `
-        /p:PublishSingleFile=true `
-        /p:IncludeNativeLibrariesForSelfExtract=true `
-        /p:EnableCompressionInSingleFile=true `
-        -o $publishDir
+    Invoke-Dotnet @(
+        'publish',
+        $projectFile,
+        '-c',
+        $Configuration,
+        '-r',
+        $Runtime,
+        '--self-contained',
+        'true',
+        '/p:PublishSingleFile=true',
+        '/p:IncludeNativeLibrariesForSelfExtract=true',
+        '/p:EnableCompressionInSingleFile=true',
+        '-o',
+        $publishDir
+    )
 }
 else {
-    dotnet publish $projectFile -c $Configuration -r $Runtime --self-contained false `
-        /p:PublishSingleFile=true `
-        /p:EnableCompressionInSingleFile=true `
-        -o $publishDir
+    Invoke-Dotnet @(
+        'publish',
+        $projectFile,
+        '-c',
+        $Configuration,
+        '-r',
+        $Runtime,
+        '--self-contained',
+        'false',
+        '/p:PublishSingleFile=true',
+        '-o',
+        $publishDir
+    )
 }
 Write-Ok 'Publish completato.'
 

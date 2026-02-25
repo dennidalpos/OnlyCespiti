@@ -62,6 +62,7 @@ Parametri principali:
 - `-Configuration Debug|Release`
 - all'avvio, se non specifichi opzioni, lo script chiede in console la modalità publish (SelfContained / FrameworkDependent)
 - `-PublishMode SelfContained|FrameworkDependent` (scelta consigliata da console)
+  - Nota: la compressione single-file è applicata solo in modalità `SelfContained` (vincolo .NET SDK).
 - `-SelfContained` o `-FrameworkDependent` (compatibilità)
 - `-SkipRestore`
 - `-NoClean`
