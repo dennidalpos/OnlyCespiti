@@ -153,6 +153,7 @@ namespace GestioneCespiti
                 this.Text = "Gestione Cespiti - Dismissioni [SOLA LETTURA]";
                 menuNewSheet.Enabled = false;
                 menuSave.Enabled = false;
+                menuImportJson.Enabled = false;
                 menuAddRow.Enabled = false;
                 menuRemoveRow.Enabled = false;
                 menuAddColumn.Enabled = false;
@@ -291,15 +292,28 @@ namespace GestioneCespiti
             }
             else
             {
-                searchNextButton.Visible = false;
-                searchTextBox.BackColor = SystemColors.Window;
-                ClearSearchCellHighlight();
+                ResetSearchUiState();
             }
+        }
+
+        private void searchTextBox_TextChanged(object? sender, EventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(searchTextBox.Text))
+                return;
+
+            ResetSearchUiState();
         }
 
         private void searchButton_Click(object? sender, EventArgs e)
         {
             string searchText = searchTextBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                ResetSearchUiState();
+                MessageBox.Show("Inserisci un testo da cercare.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             _searchManager?.PerformSearch(searchText, searchIncludeArchivedToggle.Checked, searchCaseSensitiveToggle.Checked, true);
         }
 
@@ -562,6 +576,15 @@ namespace GestioneCespiti
             button.Owner?.Invalidate();
         }
 
+        private void ResetSearchUiState()
+        {
+            _searchManager?.ResetSearch(false);
+            searchNextButton.Visible = false;
+            searchTextBox.BackColor = SystemColors.Window;
+            ClearSearchCellHighlight();
+            _statusManager?.UpdateStatus("Ricerca resettata", Color.Gray);
+        }
+
         private static string BuildSafeExportFileName(string header)
         {
             var invalidChars = System.IO.Path.GetInvalidFileNameChars();
@@ -575,6 +598,21 @@ namespace GestioneCespiti
             }
 
             return safeHeader + ".xlsx";
+        }
+
+        private static string BuildSafeJsonFileName(string header)
+        {
+            var invalidChars = System.IO.Path.GetInvalidFileNameChars();
+            string safeHeader = string.IsNullOrWhiteSpace(header)
+                ? "foglio"
+                : new string(header.Trim().Select(c => invalidChars.Contains(c) ? '_' : c).ToArray());
+
+            if (string.IsNullOrWhiteSpace(safeHeader))
+            {
+                safeHeader = "foglio";
+            }
+
+            return safeHeader + ".json";
         }
 
         private void SaveTimerCallback(object? state)
@@ -804,6 +842,76 @@ namespace GestioneCespiti
                     {
                         Logger.LogError("Errore export Excel", ex);
                         MessageBox.Show($"Errore durante l'esportazione:\n{ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void btnExportJson_Click(object? sender, EventArgs e)
+        {
+            var sheet = GetCurrentSheet();
+            if (sheet == null)
+            {
+                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "File JSON|*.json";
+                sfd.Title = "Esporta foglio in JSON";
+                sfd.FileName = BuildSafeJsonFileName(sheet.Header);
+
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        _persistenceService.ExportSheetToJson(sheet, sfd.FileName);
+                        _statusManager?.UpdateStatus("Esportato in JSON", Color.Green);
+                        MessageBox.Show("Esportazione JSON completata con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError("Errore export JSON", ex);
+                        MessageBox.Show($"Errore durante l'esportazione JSON:\n{ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void btnImportJson_Click(object? sender, EventArgs e)
+        {
+            if (_isReadOnly)
+                return;
+
+            using (var ofd = new OpenFileDialog())
+            {
+                ofd.Filter = "File JSON|*.json";
+                ofd.Title = "Importa foglio da JSON";
+                ofd.CheckFileExists = true;
+                ofd.Multiselect = false;
+
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        var importedSheet = _persistenceService.ImportSheetFromJson(ofd.FileName);
+                        InitializeSheetSettings(importedSheet);
+                        AddSheetTab(importedSheet);
+
+                        var importedTab = FindTabForSheet(importedSheet);
+                        if (importedTab != null)
+                        {
+                            tabControl.SelectedTab = importedTab;
+                        }
+
+                        _statusManager?.UpdateStatus($"Foglio importato: {importedSheet.Header}", Color.Green);
+                        MessageBox.Show("Import completato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError("Errore import JSON", ex);
+                        MessageBox.Show($"Errore durante l'import:\n{ex.Message}", "Errore", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }

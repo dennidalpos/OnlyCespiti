@@ -8,6 +8,7 @@ Il progetto aiuta a:
 - creare e mantenere più fogli operativi;
 - tracciare i beni tramite colonne standard e colonne personalizzate;
 - gestire opzioni controllate per campi specifici (`Causa dismissione`, `Tipo asset`);
+- importare/esportare fogli in JSON in modo sicuro;
 - salvare automaticamente le modifiche;
 - cercare rapidamente valori in tutti i fogli, inclusi quelli archiviati;
 - esportare i dati in formato `.xlsx`.
@@ -50,7 +51,7 @@ dotnet run
 ```
 
 Comportamento predefinito:
-- pulizia cartelle (`bin`, `obj`, `publish`);
+- pulizia cartelle (`bin`, `obj`, `publish`) anche in sottocartelle;
 - restore pacchetti;
 - build `Release`;
 - publish `win-x64` self-contained single file;
@@ -59,11 +60,20 @@ Comportamento predefinito:
 Parametri principali:
 - `-Runtime win-x64|win-x86|win-arm64`
 - `-Configuration Debug|Release`
-- `-SelfContained` o `-FrameworkDependent`
+- all'avvio, se non specifichi opzioni, lo script chiede in console la modalità publish (SelfContained / FrameworkDependent)
+- `-PublishMode SelfContained|FrameworkDependent` (scelta consigliata da console)
+  - Nota: la compressione single-file è applicata solo in modalità `SelfContained` (vincolo .NET SDK).
+- `-SelfContained` o `-FrameworkDependent` (compatibilità)
 - `-SkipRestore`
 - `-NoClean`
 - `-CleanOnly`
 - `-NoPublish`
+- `-IncludeDotnetClean`
+- `-KeepPublishOnClean`
+
+Esempi:
+- `./Scripts/build.ps1 -PublishMode SelfContained`
+- `./Scripts/build.ps1 -PublishMode FrameworkDependent`
 
 ### Clean
 
@@ -71,11 +81,12 @@ Parametri principali:
 ./Scripts/clean.ps1
 ```
 
-Rimuove le cartelle di output locali (`bin`, `obj`, `publish`).
+Rimuove le cartelle di output locali (`bin`, `obj`) in tutta la repo e, salvo override, anche `publish`.
 
 Opzioni:
 - `-IncludeDotnetClean` per eseguire anche `dotnet clean` sul `.csproj`.
 - `-Configuration Debug|Release` (usata solo con `-IncludeDotnetClean`).
+- `-KeepPublish` per mantenere intatta la cartella `publish`.
 
 ## Dati applicativi
 
@@ -111,21 +122,24 @@ A runtime l'app usa una cartella `data` accanto all'eseguibile:
 
 ### Ricerca e filtri
 
-Ricerca globale con due toggle:
+Ricerca globale con due checkbox toggle (`ToolStripButton`):
 - **Includi archiviati**: include i fogli in archivio nel set di ricerca.
 - **Match case**: passa da confronto case-insensitive a case-sensitive.
 
 Comportamento:
 - pressione `Invio` nella casella ricerca = esegue ricerca o passa al risultato successivo;
 - modifica di un filtro con testo presente = rilancio ricerca immediato;
-- modifica filtro senza testo = reset stato ricerca e highlight;
+- modifica filtro con testo vuoto = reset completo di stato, risultati e highlight;
+- svuotamento manuale della casella di ricerca = reset automatico dei risultati precedenti;
 - navigazione risultato con focus automatico su tab, riga e colonna.
 
-### Export
+### Import / Export
 
 - Export del foglio corrente in Excel (`.xlsx`).
+- Export del foglio corrente in JSON (`.json`).
+- Import di un foglio da JSON con normalizzazione colonne/righe e nome file interno univoco.
 - Nome file iniziale sanitizzato da caratteri non validi.
-- Scrittura su file temporaneo, backup del file esistente e move finale.
+- Scrittura su file temporaneo, backup del file esistente e sostituzione atomica del file finale.
 
 ## Modalità di concorrenza (lock)
 

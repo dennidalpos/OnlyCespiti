@@ -68,18 +68,29 @@ namespace GestioneCespiti.Services
                     worksheet.Columns().AdjustToContents();
                     worksheet.SheetView.FreezeRows(1);
 
-                    var tempFilePath = filePath + ".tmp";
-                    workbook.SaveAs(tempFilePath);
+                    string extension = Path.GetExtension(filePath);
+                    string tempFilePath = filePath + ".tmp" + extension;
 
-                    if (File.Exists(filePath))
+                    try
                     {
-                        var backupFilePath = filePath + ".bak";
-                        File.Copy(filePath, backupFilePath, true);
-                        File.Delete(filePath);
-                    }
+                        workbook.SaveAs(tempFilePath);
 
-                    File.Move(tempFilePath, filePath);
-                    Logger.LogInfo($"Export Excel completato: {filePath}");
+                        if (File.Exists(filePath))
+                        {
+                            var backupFilePath = filePath + ".bak";
+                            File.Copy(filePath, backupFilePath, true);
+                        }
+
+                        File.Move(tempFilePath, filePath, true);
+                        Logger.LogInfo($"Export Excel completato: {filePath}");
+                    }
+                    finally
+                    {
+                        if (File.Exists(tempFilePath))
+                        {
+                            File.Delete(tempFilePath);
+                        }
+                    }
                 }
             }
             catch (IOException ex)

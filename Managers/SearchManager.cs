@@ -22,8 +22,7 @@ namespace GestioneCespiti.Managers
 
         public void PerformSearch(string searchText, bool includeArchived, bool matchCase, bool showUserMessages = true)
         {
-            _searchResults.Clear();
-            _currentSearchIndex = -1;
+            ResetSearchState();
 
             if (string.IsNullOrWhiteSpace(searchText))
             {
@@ -89,6 +88,22 @@ namespace GestioneCespiti.Managers
             _currentSearchIndex++;
             NavigateRequested?.Invoke(this, new SearchNavigateEventArgs(_searchResults[_currentSearchIndex]));
             return true;
+        }
+
+        public void ResetSearch(bool notifyCompletion = true)
+        {
+            ResetSearchState();
+
+            if (notifyCompletion)
+            {
+                SearchCompleted?.Invoke(this, new SearchCompletedEventArgs(0, false));
+            }
+        }
+
+        private void ResetSearchState()
+        {
+            _searchResults.Clear();
+            _currentSearchIndex = -1;
         }
 
         public int CurrentIndex => _currentSearchIndex;
