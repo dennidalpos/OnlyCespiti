@@ -5,6 +5,8 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
 
+    [ValidateSet('SelfContained', 'FrameworkDependent')]
+    [string]$PublishMode = 'SelfContained',
     [switch]$SelfContained,
     [switch]$FrameworkDependent,
     [switch]$SkipRestore,
@@ -39,7 +41,15 @@ if ($SelfContained -and $FrameworkDependent) {
     throw 'Usa solo uno tra -SelfContained e -FrameworkDependent.'
 }
 
-$publishSelfContained = -not $FrameworkDependent
+if ($SelfContained) {
+    $PublishMode = 'SelfContained'
+}
+elseif ($FrameworkDependent) {
+    $PublishMode = 'FrameworkDependent'
+}
+
+$publishSelfContained = $PublishMode -eq 'SelfContained'
+Write-Info "Modalità publish selezionata: $PublishMode"
 
 Write-Info 'Verifica dotnet SDK...'
 $dotnetVersion = dotnet --version

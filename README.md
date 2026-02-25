@@ -60,13 +60,18 @@ Comportamento predefinito:
 Parametri principali:
 - `-Runtime win-x64|win-x86|win-arm64`
 - `-Configuration Debug|Release`
-- `-SelfContained` o `-FrameworkDependent`
+- `-PublishMode SelfContained|FrameworkDependent` (scelta consigliata da console)
+- `-SelfContained` o `-FrameworkDependent` (compatibilità)
 - `-SkipRestore`
 - `-NoClean`
 - `-CleanOnly`
 - `-NoPublish`
 - `-IncludeDotnetClean`
 - `-KeepPublishOnClean`
+
+Esempi:
+- `./Scripts/build.ps1 -PublishMode SelfContained`
+- `./Scripts/build.ps1 -PublishMode FrameworkDependent`
 
 ### Clean
 
