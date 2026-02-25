@@ -1,6 +1,8 @@
 param(
     [switch]$IncludeDotnetClean,
-    [string]$Configuration = 'Release'
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Release',
+    [switch]$KeepPublish
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,11 +18,22 @@ Set-Location $projectRoot
 
 Write-Info 'Pulizia progetto GestioneCespiti...'
 
-foreach ($path in @('bin', 'obj', 'publish')) {
-    $fullPath = Join-Path $projectRoot $path
-    if (Test-Path $fullPath) {
-        Remove-Item -Path $fullPath -Recurse -Force
-        Write-Ok "Rimosso: $path"
+$foldersToDelete = Get-ChildItem -Path $projectRoot -Directory -Recurse -Force |
+    Where-Object {
+        ($_.Name -in @('bin', 'obj')) -and
+        $_.FullName -notlike "*$([IO.Path]::DirectorySeparatorChar).git$([IO.Path]::DirectorySeparatorChar)*"
+    }
+
+foreach ($folder in $foldersToDelete) {
+    Remove-Item -Path $folder.FullName -Recurse -Force
+    Write-Ok "Rimosso: $($folder.FullName.Replace($projectRoot + [IO.Path]::DirectorySeparatorChar, ''))"
+}
+
+if (-not $KeepPublish) {
+    $publishPath = Join-Path $projectRoot 'publish'
+    if (Test-Path $publishPath) {
+        Remove-Item -Path $publishPath -Recurse -Force
+        Write-Ok 'Rimosso: publish'
     }
 }
 

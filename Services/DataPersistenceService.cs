@@ -153,7 +153,7 @@ namespace GestioneCespiti.Services
             RemoveDuplicateColumns(importedSheet, fullPath);
 
             importedSheet.IsArchived = isArchived;
-            importedSheet.FileName = GenerateSafeFileName(importedSheet.Header) + ".json";
+            importedSheet.FileName = CreateUniqueSheetFileName(importedSheet.Header, isArchived);
 
             SaveSheet(importedSheet);
             return importedSheet;
@@ -175,18 +175,28 @@ namespace GestioneCespiti.Services
             PathValidator.EnsureDirectoryExists(destinationDirectory);
 
             string tempFile = fullPath + ".tmp";
-            string json = JsonConvert.SerializeObject(sheet, Formatting.Indented);
-            File.WriteAllText(tempFile, json, Encoding.UTF8);
 
-            if (File.Exists(fullPath))
+            try
             {
-                string backupFile = fullPath + ".bak";
-                File.Copy(fullPath, backupFile, true);
-                File.Delete(fullPath);
-            }
+                string json = JsonConvert.SerializeObject(sheet, Formatting.Indented);
+                File.WriteAllText(tempFile, json, Encoding.UTF8);
 
-            File.Move(tempFile, fullPath);
-            Logger.LogInfo($"Foglio esportato in JSON: {sheet.Header} -> {fullPath}");
+                if (File.Exists(fullPath))
+                {
+                    string backupFile = fullPath + ".bak";
+                    File.Copy(fullPath, backupFile, true);
+                }
+
+                File.Move(tempFile, fullPath, true);
+                Logger.LogInfo($"Foglio esportato in JSON: {sheet.Header} -> {fullPath}");
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                {
+                    File.Delete(tempFile);
+                }
+            }
         }
 
         public void SaveSheet(AssetSheet sheet)
@@ -196,15 +206,16 @@ namespace GestioneCespiti.Services
 
             if (string.IsNullOrWhiteSpace(sheet.FileName))
             {
-                sheet.FileName = GenerateSafeFileName(sheet.Header) + ".json";
+                sheet.FileName = CreateUniqueSheetFileName(sheet.Header, sheet.IsArchived);
             }
 
             string targetFolder = sheet.IsArchived ? _archivedFolder : _dataFolder;
             string filePath = PathValidator.ValidateAndGetSafePath(targetFolder, sheet.FileName);
 
+            string tempFile = filePath + ".tmp";
+
             try
             {
-                string tempFile = filePath + ".tmp";
                 string json = JsonConvert.SerializeObject(sheet, Formatting.Indented);
                 File.WriteAllText(tempFile, json, Encoding.UTF8);
 
@@ -222,6 +233,13 @@ namespace GestioneCespiti.Services
             {
                 Logger.LogError($"Errore salvataggio foglio '{sheet.Header}'", ex);
                 throw;
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                {
+                    File.Delete(tempFile);
+                }
             }
         }
 
@@ -333,6 +351,14 @@ namespace GestioneCespiti.Services
             } while (File.Exists(destPath));
 
             return destPath;
+        }
+
+        private string CreateUniqueSheetFileName(string header, bool isArchived)
+        {
+            string targetFolder = isArchived ? _archivedFolder : _dataFolder;
+            string fileName = GenerateSafeFileName(header) + ".json";
+            string fullPath = GetUniqueFileName(targetFolder, fileName);
+            return Path.GetFileName(fullPath);
         }
 
         private string GenerateSafeFileName(string input)

@@ -10,6 +10,8 @@ namespace GestioneCespiti
         private System.Windows.Forms.ToolStripMenuItem menuNewSheet = null!;
         private System.Windows.Forms.ToolStripMenuItem menuSave = null!;
         private System.Windows.Forms.ToolStripMenuItem menuExport = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuExportJson = null!;
+        private System.Windows.Forms.ToolStripMenuItem menuImportJson = null!;
 
         // Menu Riga
         private System.Windows.Forms.ToolStripMenuItem menuRow = null!;
@@ -70,6 +72,8 @@ namespace GestioneCespiti
             this.menuNewSheet = new System.Windows.Forms.ToolStripMenuItem();
             this.menuSave = new System.Windows.Forms.ToolStripMenuItem();
             this.menuExport = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuExportJson = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuImportJson = new System.Windows.Forms.ToolStripMenuItem();
 
             // Menu Riga
             this.menuRow = new System.Windows.Forms.ToolStripMenuItem();
@@ -140,7 +144,9 @@ namespace GestioneCespiti
             this.menuFile.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
                 this.menuNewSheet,
                 this.menuSave,
-                this.menuExport
+                this.menuExport,
+                this.menuExportJson,
+                this.menuImportJson
             });
             this.menuFile.Name = "menuFile";
             this.menuFile.Size = new System.Drawing.Size(50, 24);
@@ -163,6 +169,18 @@ namespace GestioneCespiti
             this.menuExport.Size = new System.Drawing.Size(250, 26);
             this.menuExport.Text = "Esporta in Excel";
             this.menuExport.Click += new System.EventHandler(this.btnExport_Click);
+
+            this.menuExportJson.Name = "menuExportJson";
+            this.menuExportJson.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) | System.Windows.Forms.Keys.E)));
+            this.menuExportJson.Size = new System.Drawing.Size(280, 26);
+            this.menuExportJson.Text = "Esporta in JSON";
+            this.menuExportJson.Click += new System.EventHandler(this.btnExportJson_Click);
+
+            this.menuImportJson.Name = "menuImportJson";
+            this.menuImportJson.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.I)));
+            this.menuImportJson.Size = new System.Drawing.Size(280, 26);
+            this.menuImportJson.Text = "Importa da JSON";
+            this.menuImportJson.Click += new System.EventHandler(this.btnImportJson_Click);
 
             // Menu Riga
             this.menuRow.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -299,6 +317,7 @@ namespace GestioneCespiti
             this.searchTextBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.searchTextBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.searchTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.searchTextBox_KeyDown);
+            this.searchTextBox.TextChanged += new System.EventHandler(this.searchTextBox_TextChanged);
 
             this.searchButton.Name = "searchButton";
             this.searchButton.Text = "🔍 Cerca";

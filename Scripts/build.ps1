@@ -10,7 +10,9 @@ param(
     [switch]$SkipRestore,
     [switch]$NoClean,
     [switch]$CleanOnly,
-    [switch]$NoPublish
+    [switch]$NoPublish,
+    [switch]$IncludeDotnetClean,
+    [switch]$KeepPublishOnClean
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,7 +50,19 @@ if (-not $NoClean -or $CleanOnly) {
         throw "Script clean non trovato: $cleanScript"
     }
 
-    & $cleanScript
+    $cleanParams = @{
+        Configuration = $Configuration
+    }
+
+    if ($IncludeDotnetClean) {
+        $cleanParams.IncludeDotnetClean = $true
+    }
+
+    if ($KeepPublishOnClean) {
+        $cleanParams.KeepPublish = $true
+    }
+
+    & $cleanScript @cleanParams
 }
 
 if ($CleanOnly) {
