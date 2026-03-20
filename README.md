@@ -1,10 +1,15 @@
-# GestioneCespiti
+# OnlyCespiti
 
-Applicazione desktop Windows Forms per gestire fogli di dismissione cespiti, con salvataggio JSON locale, ricerca trasversale tra fogli, archiviazione e export in Excel.
+Repository dell'applicazione desktop Windows Forms `GestioneCespiti`, usata per gestire fogli di dismissione cespiti con salvataggio JSON locale, ricerca trasversale tra fogli, archiviazione ed export in Excel.
+
+Documentazione tecnica:
+- [PROJECT_SPEC.md](PROJECT_SPEC.md)
+- [PROJECT_STATUS.json](PROJECT_STATUS.json)
+- [LICENSE](LICENSE)
 
 ## Obiettivo del progetto
 
-Il progetto aiuta a:
+L'applicazione aiuta a:
 - creare e mantenere più fogli operativi;
 - tracciare i beni tramite colonne standard e colonne personalizzate;
 - gestire opzioni controllate per campi specifici (`Causa dismissione`, `Tipo asset`);
@@ -26,6 +31,8 @@ Il progetto aiuta a:
 - `Services/` persistenza dati, lock applicativo, export Excel, impostazioni e logging.
 - `Models/` modelli dominio (`Asset`, `AssetSheet`, `AppSettings`, ecc.).
 - `Scripts/` automazione build e clean.
+- `tests/` test automatici per servizi e manager core.
+- root: solution, progetto .NET e documenti standard del repository.
 
 ## Avvio in sviluppo
 
@@ -40,6 +47,12 @@ Per avviare l'app in debug:
 
 ```powershell
 dotnet run
+```
+
+Per eseguire i test:
+
+```powershell
+dotnet test GestioneCespiti.sln -c Release
 ```
 
 ## Script disponibili
@@ -81,7 +94,11 @@ Esempi:
 ./Scripts/clean.ps1
 ```
 
-Rimuove le cartelle di output locali (`bin`, `obj`) in tutta la repo e, salvo override, anche `publish`.
+Ripristina la repo a uno stato locale pulito rimuovendo:
+- cartelle di output (`build`, `bin`, `obj`, `publish`, `dist`, `out`, `target`, `artifacts`, `TestResults`, `tmp`);
+- cache e cartelle locali di IDE (`.vs`);
+- dati runtime locali in root (`data`);
+- file temporanei e backup (`*.log`, `*.tmp`, `*.bak`).
 
 Opzioni:
 - `-IncludeDotnetClean` per eseguire anche `dotnet clean` sul `.csproj`.
@@ -132,6 +149,7 @@ Comportamento:
 - modifica filtro con testo vuoto = reset completo di stato, risultati e highlight;
 - svuotamento manuale della casella di ricerca = reset automatico dei risultati precedenti;
 - navigazione risultato con focus automatico su tab, riga e colonna.
+- i fogli archiviati aperti dai risultati di ricerca restano consultabili in sola lettura finché non vengono ripristinati esplicitamente dall'archivio.
 
 ### Import / Export
 
@@ -170,3 +188,4 @@ Il servizio di logging registra:
 
 - L’app è pensata per uso locale o cartelle condivise in rete con lock applicativo.
 - In sola lettura è comunque possibile consultare i fogli e utilizzare la ricerca.
+- Il nome del repository è `OnlyCespiti`; il nome dell'applicazione .NET e dell'assembly resta `GestioneCespiti`.

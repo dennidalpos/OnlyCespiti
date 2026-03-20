@@ -11,11 +11,13 @@ namespace GestioneCespiti.Forms.Dialogs
     {
         private readonly ListBox listBox;
         private readonly DataPersistenceService _persistenceService;
+        private readonly SettingsService _settingsService;
         private readonly bool _isReadOnly;
 
-        public ArchiveDialog(List<AssetSheet> archivedSheets, DataPersistenceService persistenceService, bool isReadOnly)
+        public ArchiveDialog(List<AssetSheet> archivedSheets, DataPersistenceService persistenceService, SettingsService settingsService, bool isReadOnly)
         {
             _persistenceService = persistenceService;
+            _settingsService = settingsService;
             _isReadOnly = isReadOnly;
 
             Text = "Fogli Archiviati";
@@ -84,7 +86,9 @@ namespace GestioneCespiti.Forms.Dialogs
                 {
                     try
                     {
+                        string originalFileName = sheet.FileName;
                         _persistenceService.UnarchiveSheet(sheet);
+                        _settingsService.MoveSettingsForSheet(originalFileName, sheet.FileName);
                         listBox.Items.Remove(sheet);
                         MessageBox.Show("Foglio ripristinato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
@@ -109,6 +113,7 @@ namespace GestioneCespiti.Forms.Dialogs
                     try
                     {
                         _persistenceService.DeleteSheet(sheet);
+                        _settingsService.DeleteSettingsForSheet(sheet.FileName);
                         listBox.Items.Remove(sheet);
                         MessageBox.Show("Foglio eliminato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }

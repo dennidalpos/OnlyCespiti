@@ -290,10 +290,10 @@ namespace GestioneCespiti
             this.menuManageTipoAsset.Size = new System.Drawing.Size(280, 26);
             this.menuManageTipoAsset.Text = "Tipo Asset";
             this.menuManageTipoAsset.Click += new System.EventHandler(this.btnManageTipoAsset_Click);
-            this.menuManageTipoAsset.Visible = false;
 
             this.menuManageColumns.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.menuManageCauseDismissione
+                this.menuManageCauseDismissione,
+                this.menuManageTipoAsset
             });
 
             // Menu Aiuto

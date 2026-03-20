@@ -67,6 +67,71 @@ namespace GestioneCespiti.Services
             SaveSettingsToFile(settings, sheetSettingsFile, "settings foglio");
         }
 
+        public void MoveSettingsForSheet(string oldSheetFileName, string newSheetFileName)
+        {
+            if (string.IsNullOrWhiteSpace(oldSheetFileName) || string.IsNullOrWhiteSpace(newSheetFileName))
+                return;
+
+            string oldSettingsFile = GetSheetSettingsFile(oldSheetFileName);
+            string newSettingsFile = GetSheetSettingsFile(newSheetFileName);
+
+            if (string.Equals(oldSettingsFile, newSettingsFile, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            try
+            {
+                if (File.Exists(oldSettingsFile))
+                {
+                    if (File.Exists(newSettingsFile))
+                    {
+                        File.Copy(newSettingsFile, newSettingsFile + ".bak", true);
+                    }
+
+                    File.Move(oldSettingsFile, newSettingsFile, true);
+                    Logger.LogInfo($"Impostazioni foglio migrate: {oldSheetFileName} -> {newSheetFileName}");
+                }
+
+                string oldBackupFile = oldSettingsFile + ".bak";
+                if (File.Exists(oldBackupFile))
+                {
+                    File.Move(oldBackupFile, newSettingsFile + ".bak", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Errore migrazione settings foglio '{oldSheetFileName}' -> '{newSheetFileName}'", ex);
+                throw new IOException("Impossibile migrare le impostazioni del foglio", ex);
+            }
+        }
+
+        public void DeleteSettingsForSheet(string sheetFileName)
+        {
+            if (string.IsNullOrWhiteSpace(sheetFileName))
+                return;
+
+            string settingsFile = GetSheetSettingsFile(sheetFileName);
+            string backupFile = settingsFile + ".bak";
+
+            try
+            {
+                if (File.Exists(settingsFile))
+                {
+                    File.Delete(settingsFile);
+                    Logger.LogInfo($"Impostazioni foglio eliminate: {sheetFileName}");
+                }
+
+                if (File.Exists(backupFile))
+                {
+                    File.Delete(backupFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Errore eliminazione settings foglio '{sheetFileName}'", ex);
+                throw new IOException("Impossibile eliminare le impostazioni del foglio", ex);
+            }
+        }
+
         private string GetSheetSettingsFile(string sheetFileName)
         {
             string safeName = Path.GetFileNameWithoutExtension(sheetFileName);

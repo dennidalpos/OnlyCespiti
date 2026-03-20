@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Linq;
 using System.Threading;
@@ -32,11 +33,12 @@ namespace GestioneCespiti
         private Color _lastSearchCellBackColor = Color.Empty;
         private Color _lastSearchCellSelectionBackColor = Color.Empty;
 
-        private bool _hasUnsavedChanges = false;
         private static readonly Color ActiveTabColor = Color.FromArgb(210, 233, 255);
         private static readonly Color InactiveTabColor = SystemColors.Control;
         private const string IncludeArchivedBaseText = "Includi archiviati";
         private const string MatchCaseBaseText = "Match case";
+        private const string ArchivedSheetReadOnlyMessage = "I fogli archiviati aperti dalla ricerca sono consultabili in sola lettura. Ripristinali dall'archivio per modificarli.";
+        private readonly Dictionary<AssetSheet, int> _dirtySheetVersions = new Dictionary<AssetSheet, int>();
 
         public MainForm()
         {
@@ -59,6 +61,7 @@ namespace GestioneCespiti
             ConfigureTabControlRendering();
             UpdateSearchToggleVisualState();
             UpdateUIForReadOnlyMode();
+            UpdateCommandAvailability();
         }
 
         private void InitializeManagers()
@@ -76,10 +79,10 @@ namespace GestioneCespiti
         {
             e.Sheet.Rows[e.RowIndex][e.ColumnName] = e.NewValue;
 
-            _hasUnsavedChanges = true;
-
             lock (_saveLock)
             {
+                _dirtySheetVersions.TryGetValue(e.Sheet, out int currentVersion);
+                _dirtySheetVersions[e.Sheet] = currentVersion + 1;
                 _pendingAutoSaveSheets.Add(e.Sheet);
                 _saveTimer?.Dispose();
                 _saveTimer = null;
@@ -172,13 +175,110 @@ namespace GestioneCespiti
                 statusStrip.Items.Add(new ToolStripSeparator());
                 statusStrip.Items.Add(readOnlyLabel);
             }
+
+            UpdateCommandAvailability();
+        }
+
+        private bool IsSheetEditable(AssetSheet? sheet)
+        {
+            return !_isReadOnly && sheet != null && !sheet.IsArchived;
+        }
+
+        private bool EnsureSheetEditable([NotNullWhen(true)] AssetSheet? sheet)
+        {
+            if (sheet == null)
+            {
+                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            if (sheet.IsArchived)
+            {
+                MessageBox.Show(ArchivedSheetReadOnlyMessage, "Foglio archiviato", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
+            }
+
+            return !_isReadOnly;
+        }
+
+        private void UpdateCommandAvailability()
+        {
+            var currentSheet = GetCurrentSheet();
+            bool hasSheet = currentSheet != null;
+            bool canEditCurrentSheet = IsSheetEditable(currentSheet);
+            bool canCreateOrImport = !_isReadOnly;
+
+            menuNewSheet.Enabled = canCreateOrImport;
+            menuImportJson.Enabled = canCreateOrImport;
+
+            menuSave.Enabled = canEditCurrentSheet;
+            menuAddRow.Enabled = canEditCurrentSheet;
+            menuRemoveRow.Enabled = canEditCurrentSheet;
+            menuAddColumn.Enabled = canEditCurrentSheet;
+            menuRemoveColumn.Enabled = canEditCurrentSheet;
+            menuRenameSheet.Enabled = canEditCurrentSheet;
+            menuDeleteSheet.Enabled = canEditCurrentSheet;
+            menuArchiveSheet.Enabled = canEditCurrentSheet;
+            menuManageColumns.Enabled = canEditCurrentSheet;
+
+            menuExport.Enabled = hasSheet;
+            menuExportJson.Enabled = hasSheet;
+            menuViewArchived.Enabled = true;
+        }
+
+        private void MoveCachedSheetSettings(string oldFileName, string newFileName)
+        {
+            if (string.IsNullOrWhiteSpace(oldFileName) ||
+                string.IsNullOrWhiteSpace(newFileName) ||
+                oldFileName.Equals(newFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (_sheetSettings.TryGetValue(oldFileName, out var settings))
+            {
+                _sheetSettings.Remove(oldFileName);
+                _sheetSettings[newFileName] = settings;
+            }
+        }
+
+        private void RemoveCachedSheetSettings(string sheetFileName)
+        {
+            if (string.IsNullOrWhiteSpace(sheetFileName))
+                return;
+
+            _sheetSettings.Remove(sheetFileName);
+        }
+
+        private void ReloadActiveSheets()
+        {
+            while (tabControl.TabPages.Count > 0)
+            {
+                RemoveTabAndDispose(tabControl.TabPages[0]);
+            }
+
+            lock (_saveLock)
+            {
+                _sheetSettings.Clear();
+                _dirtySheetVersions.Clear();
+                _pendingAutoSaveSheets.Clear();
+            }
+
+            LoadAllSheets();
+            UpdateCommandAvailability();
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             Logger.LogInfo("Chiusura applicazione in corso...");
 
-            if (_hasUnsavedChanges && !_isReadOnly)
+            lock (_saveLock)
+            {
+                _saveTimer?.Dispose();
+                _saveTimer = null;
+            }
+
+            if (HasUnsavedChanges() && !_isReadOnly)
             {
                 var result = MessageBox.Show(
                     "Ci sono modifiche non salvate.\nVuoi salvare prima di uscire?",
@@ -213,12 +313,6 @@ namespace GestioneCespiti
                 }
             }
 
-            lock (_saveLock)
-            {
-                _saveTimer?.Dispose();
-                _saveTimer = null;
-            }
-
             ClearSearchCellHighlight();
 
             _statusManager?.Dispose();
@@ -236,24 +330,34 @@ namespace GestioneCespiti
         private bool SaveAllSheets()
         {
             bool allSaved = true;
-            var errors = new List<string>();
+            List<(AssetSheet Sheet, int Version)> dirtySheets;
 
-            foreach (TabPage tab in tabControl.TabPages)
+            lock (_saveLock)
             {
-                if (tab.Tag is AssetSheet sheet)
+                dirtySheets = _dirtySheetVersions
+                    .Where(entry => IsSheetEditable(entry.Key))
+                    .Select(entry => (entry.Key, entry.Value))
+                    .ToList();
+            }
+
+            foreach (var entry in dirtySheets)
+            {
+                try
                 {
-                    try
-                    {
-                        _persistenceService.SaveSheet(sheet);
-                        Logger.LogInfo($"Foglio '{sheet.Header}' salvato alla chiusura");
-                    }
-                    catch (Exception ex)
+                    _persistenceService.SaveSheet(entry.Sheet);
+                    if (!TryMarkSheetClean(entry.Sheet, entry.Version))
                     {
                         allSaved = false;
-                        string error = $"Foglio '{sheet.Header}': {ex.Message}";
-                        errors.Add(error);
-                        Logger.LogError($"Errore salvataggio '{sheet.Header}' alla chiusura", ex);
+                        Logger.LogWarning($"Nuove modifiche rilevate durante il salvataggio del foglio '{entry.Sheet.Header}'");
+                        continue;
                     }
+
+                    Logger.LogInfo($"Foglio '{entry.Sheet.Header}' salvato alla chiusura");
+                }
+                catch (Exception ex)
+                {
+                    allSaved = false;
+                    Logger.LogError($"Errore salvataggio '{entry.Sheet.Header}' alla chiusura", ex);
                 }
             }
 
@@ -455,6 +559,8 @@ namespace GestioneCespiti
             {
                 AddSheetTab(sheet);
             }
+
+            UpdateCommandAvailability();
         }
 
         private void CreateNewSheet()
@@ -504,19 +610,20 @@ namespace GestioneCespiti
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
-                ReadOnly = _isReadOnly,
+                ReadOnly = _isReadOnly || sheet.IsArchived,
                 Tag = sheet,
                 EditMode = DataGridViewEditMode.EditOnEnter
             };
 
             var settings = GetSheetSettings(sheet);
-            _gridManager?.BindGridToSheet(grid, sheet, settings);
+            _gridManager?.BindGridToSheet(grid, sheet, settings, sheet.IsArchived);
 
             panel.Controls.Add(grid);
             panel.Controls.Add(lblHeader);
             tabPage.Controls.Add(panel);
             tabControl.TabPages.Add(tabPage);
             tabControl.Invalidate();
+            UpdateCommandAvailability();
         }
 
         private void ConfigureTabControlRendering()
@@ -532,6 +639,7 @@ namespace GestioneCespiti
         private void TabControl_SelectedIndexChanged(object? sender, EventArgs e)
         {
             tabControl.Invalidate();
+            UpdateCommandAvailability();
         }
 
         private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)
@@ -620,77 +728,86 @@ namespace GestioneCespiti
             if (_isReadOnly || this.IsDisposed)
                 return;
 
-            List<AssetSheet> sheetsToSave;
+            List<(AssetSheet Sheet, int Version)> sheetsToSave;
             lock (_saveLock)
             {
-                sheetsToSave = _pendingAutoSaveSheets.ToList();
+                sheetsToSave = _pendingAutoSaveSheets
+                    .Where(sheet => IsSheetEditable(sheet) && _dirtySheetVersions.ContainsKey(sheet))
+                    .Select(sheet => (sheet, _dirtySheetVersions[sheet]))
+                    .ToList();
                 _pendingAutoSaveSheets.Clear();
             }
 
             bool allSaved = true;
+            var failedSheets = new List<AssetSheet>();
+            var staleSaveSheets = new List<AssetSheet>();
 
-            try
+            foreach (var entry in sheetsToSave)
             {
-                foreach (var sheet in sheetsToSave)
+                try
                 {
-                    _persistenceService.SaveSheet(sheet);
-                    Logger.LogInfo($"Salvataggio automatico completato: {sheet.Header}");
-                }
+                    _persistenceService.SaveSheet(entry.Sheet);
 
-                _hasUnsavedChanges = false;
-
-                if (!this.IsDisposed && this.InvokeRequired)
-                {
-                    this.BeginInvoke(new Action(() =>
+                    if (!TryMarkSheetClean(entry.Sheet, entry.Version))
                     {
-                        if (!this.IsDisposed)
-                        {
-                            _statusManager?.UpdateStatus("Salvataggio automatico completato", Color.Green);
-                        }
-                    }));
-                }
-                else if (!this.IsDisposed)
-                {
-                    _statusManager?.UpdateStatus("Salvataggio automatico completato", Color.Green);
-                }
-            }
-            catch (Exception ex)
-            {
-                allSaved = false;
-                Logger.LogError("Errore salvataggio automatico", ex);
-
-                if (!this.IsDisposed && this.InvokeRequired)
-                {
-                    this.BeginInvoke(new Action(() =>
-                    {
-                        if (!this.IsDisposed)
-                        {
-                            _statusManager?.UpdateStatus("Errore salvataggio automatico", Color.Red);
-                        }
-                    }));
-                }
-            }
-            finally
-            {
-                lock (_saveLock)
-                {
-                    if (!allSaved)
-                    {
-                        foreach (var unsavedSheet in sheetsToSave)
-                        {
-                            _pendingAutoSaveSheets.Add(unsavedSheet);
-                        }
-
-                        _hasUnsavedChanges = true;
+                        staleSaveSheets.Add(entry.Sheet);
+                        Logger.LogInfo($"Nuove modifiche rilevate durante l'autosave del foglio '{entry.Sheet.Header}', pianifico un nuovo passaggio");
+                        continue;
                     }
 
-                    _saveTimer?.Dispose();
-                    _saveTimer = null;
+                    Logger.LogInfo($"Salvataggio automatico completato: {entry.Sheet.Header}");
+                }
+                catch (Exception ex)
+                {
+                    allSaved = false;
+                    failedSheets.Add(entry.Sheet);
+                    Logger.LogError($"Errore salvataggio automatico foglio '{entry.Sheet.Header}'", ex);
+                }
+            }
 
-                    if (_pendingAutoSaveSheets.Count > 0 && !_isReadOnly && !this.IsDisposed)
+            if (!this.IsDisposed && this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() =>
+                {
+                    if (!this.IsDisposed)
                     {
-                        _saveTimer = new System.Threading.Timer(SaveTimerCallback, null, 2000, Timeout.Infinite);
+                        _statusManager?.UpdateStatus(
+                            allSaved ? "Salvataggio automatico completato" : "Errore salvataggio automatico",
+                            allSaved ? Color.Green : Color.Red);
                     }
+                }));
+            }
+            else if (!this.IsDisposed)
+            {
+                _statusManager?.UpdateStatus(
+                    allSaved ? "Salvataggio automatico completato" : "Errore salvataggio automatico",
+                    allSaved ? Color.Green : Color.Red);
+            }
+
+            lock (_saveLock)
+            {
+                if (!allSaved)
+                {
+                    foreach (var unsavedSheet in failedSheets)
+                    {
+                        _pendingAutoSaveSheets.Add(unsavedSheet);
+                    }
+                }
+
+                foreach (var staleSheet in staleSaveSheets)
+                {
+                    if (_dirtySheetVersions.ContainsKey(staleSheet))
+                    {
+                        _pendingAutoSaveSheets.Add(staleSheet);
+                    }
+                }
+
+                _saveTimer?.Dispose();
+                _saveTimer = null;
+
+                if (_pendingAutoSaveSheets.Count > 0 && !_isReadOnly && !this.IsDisposed)
+                {
+                    _saveTimer = new System.Threading.Timer(SaveTimerCallback, null, 2000, Timeout.Infinite);
                 }
             }
         }
@@ -737,7 +854,7 @@ namespace GestioneCespiti
             if (sheet != null && grid != null)
             {
                 var settings = GetSheetSettings(sheet);
-                _gridManager?.BindGridToSheet(grid, sheet, settings);
+                _gridManager?.BindGridToSheet(grid, sheet, settings, sheet.IsArchived);
             }
         }
 
@@ -752,7 +869,7 @@ namespace GestioneCespiti
                     if (grid != null)
                     {
                         var settings = GetSheetSettings(sheet);
-                        _gridManager?.BindGridToSheet(grid, sheet, settings);
+                        _gridManager?.BindGridToSheet(grid, sheet, settings, sheet.IsArchived);
                     }
                 }
             }
@@ -760,6 +877,11 @@ namespace GestioneCespiti
 
         private void RemoveTabAndDispose(TabPage tabPage)
         {
+            if (tabPage.Tag is AssetSheet sheet)
+            {
+                ForgetSheetState(sheet);
+            }
+
             foreach (Control control in tabPage.Controls)
             {
                 if (control is Panel panel)
@@ -782,6 +904,7 @@ namespace GestioneCespiti
 
             tabControl.TabPages.Remove(tabPage);
             tabPage.Dispose();
+            UpdateCommandAvailability();
         }
 
         private void btnNewSheet_Click(object? sender, EventArgs e)
@@ -795,16 +918,16 @@ namespace GestioneCespiti
             if (_isReadOnly) return;
 
             var sheet = GetCurrentSheet();
-            if (sheet == null)
+            if (!EnsureSheetEditable(sheet))
             {
-                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             try
             {
+                int dirtyVersion = GetCurrentDirtyVersion(sheet);
                 _persistenceService.SaveSheet(sheet);
-                _hasUnsavedChanges = false;
+                TryMarkSheetClean(sheet, dirtyVersion);
                 _statusManager?.UpdateStatus("Foglio salvato", Color.Green);
                 MessageBox.Show("Foglio salvato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -922,19 +1045,20 @@ namespace GestioneCespiti
             if (_isReadOnly) return;
 
             var sheet = GetCurrentSheet();
-            if (sheet == null) return;
+            if (!EnsureSheetEditable(sheet)) return;
 
             var newAsset = new Asset();
             sheet.Rows.Add(newAsset);
             RefreshCurrentGrid();
 
-            try
-            {
-                _persistenceService.SaveSheet(sheet);
-                _hasUnsavedChanges = false;
-                _statusManager?.UpdateStatus("Riga aggiunta", Color.Green);
-            }
-            catch (Exception ex)
+                    try
+                    {
+                        int dirtyVersion = GetCurrentDirtyVersion(sheet);
+                        _persistenceService.SaveSheet(sheet);
+                        TryMarkSheetClean(sheet, dirtyVersion);
+                        _statusManager?.UpdateStatus("Riga aggiunta", Color.Green);
+                    }
+                    catch (Exception ex)
             {
                 Logger.LogError("Errore aggiunta riga", ex);
             }
@@ -946,7 +1070,7 @@ namespace GestioneCespiti
 
             var sheet = GetCurrentSheet();
             var grid = GetCurrentGrid();
-            if (sheet == null || grid == null) return;
+            if (!EnsureSheetEditable(sheet) || grid == null) return;
 
             if (grid.SelectedRows.Count == 0)
             {
@@ -965,8 +1089,9 @@ namespace GestioneCespiti
 
                     try
                     {
+                        int dirtyVersion = GetCurrentDirtyVersion(sheet);
                         _persistenceService.SaveSheet(sheet);
-                        _hasUnsavedChanges = false;
+                        TryMarkSheetClean(sheet, dirtyVersion);
                         _statusManager?.UpdateStatus("Riga eliminata", Color.Green);
                     }
                     catch (Exception ex)
@@ -982,7 +1107,7 @@ namespace GestioneCespiti
             if (_isReadOnly) return;
 
             var sheet = GetCurrentSheet();
-            if (sheet == null) return;
+            if (!EnsureSheetEditable(sheet)) return;
 
             using (var inputDialog = new InputDialog("Inserisci nome nuova colonna", "", 100))
             {
@@ -1006,8 +1131,9 @@ namespace GestioneCespiti
 
                     try
                     {
+                        int dirtyVersion = GetCurrentDirtyVersion(sheet);
                         _persistenceService.SaveSheet(sheet);
-                        _hasUnsavedChanges = false;
+                        TryMarkSheetClean(sheet, dirtyVersion);
                         _statusManager?.UpdateStatus("Colonna aggiunta", Color.Green);
                     }
                     catch (Exception ex)
@@ -1024,7 +1150,7 @@ namespace GestioneCespiti
 
             var sheet = GetCurrentSheet();
             var grid = GetCurrentGrid();
-            if (sheet == null || grid == null) return;
+            if (!EnsureSheetEditable(sheet) || grid == null) return;
 
             if (grid.SelectedCells.Count == 0)
             {
@@ -1070,8 +1196,9 @@ namespace GestioneCespiti
 
                 try
                 {
+                    int dirtyVersion = GetCurrentDirtyVersion(sheet);
                     _persistenceService.SaveSheet(sheet);
-                    _hasUnsavedChanges = false;
+                    TryMarkSheetClean(sheet, dirtyVersion);
                     _statusManager?.UpdateStatus("Colonna eliminata", Color.Green);
                 }
                 catch (Exception ex)
@@ -1089,9 +1216,8 @@ namespace GestioneCespiti
             var currentTab = tabControl.SelectedTab;
             var headerLabel = GetCurrentHeaderLabel();
 
-            if (sheet == null || currentTab == null)
+            if (!EnsureSheetEditable(sheet) || currentTab == null)
             {
-                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1116,8 +1242,9 @@ namespace GestioneCespiti
 
                     try
                     {
+                        int dirtyVersion = GetCurrentDirtyVersion(sheet);
                         _persistenceService.SaveSheet(sheet);
-                        _hasUnsavedChanges = false;
+                        TryMarkSheetClean(sheet, dirtyVersion);
                         _statusManager?.UpdateStatus("Foglio rinominato", Color.Green);
                         MessageBox.Show("Foglio rinominato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
@@ -1137,9 +1264,8 @@ namespace GestioneCespiti
             var sheet = GetCurrentSheet();
             var currentTab = tabControl.SelectedTab;
 
-            if (sheet == null || currentTab == null)
+            if (!EnsureSheetEditable(sheet) || currentTab == null)
             {
-                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1151,8 +1277,10 @@ namespace GestioneCespiti
                 try
                 {
                     _persistenceService.DeleteSheet(sheet);
+                    _settingsService.DeleteSettingsForSheet(sheet.FileName);
+                    RemoveCachedSheetSettings(sheet.FileName);
+                    ForgetSheetState(sheet);
                     RemoveTabAndDispose(currentTab);
-                    _hasUnsavedChanges = false;
                     _statusManager?.UpdateStatus("Foglio eliminato", Color.Green);
                     MessageBox.Show("Foglio eliminato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -1171,15 +1299,8 @@ namespace GestioneCespiti
             var sheet = GetCurrentSheet();
             var currentTab = tabControl.SelectedTab;
 
-            if (sheet == null || currentTab == null)
+            if (!EnsureSheetEditable(sheet) || currentTab == null)
             {
-                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (sheet.IsArchived)
-            {
-                MessageBox.Show("Questo foglio è già archiviato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1189,9 +1310,12 @@ namespace GestioneCespiti
             {
                 try
                 {
+                    string originalFileName = sheet.FileName;
                     _persistenceService.ArchiveSheet(sheet);
+                    _settingsService.MoveSettingsForSheet(originalFileName, sheet.FileName);
+                    MoveCachedSheetSettings(originalFileName, sheet.FileName);
+                    ForgetSheetState(sheet);
                     RemoveTabAndDispose(currentTab);
-                    _hasUnsavedChanges = false;
                     _statusManager?.UpdateStatus("Foglio archiviato", Color.Green);
                     MessageBox.Show("Foglio archiviato con successo.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -1213,17 +1337,13 @@ namespace GestioneCespiti
                 return;
             }
 
-            using (var archiveDialog = new ArchiveDialog(archivedSheets, _persistenceService, _isReadOnly))
+            using (var archiveDialog = new ArchiveDialog(archivedSheets, _persistenceService, _settingsService, _isReadOnly))
             {
                 if (archiveDialog.ShowDialog() == DialogResult.OK)
                 {
                     if (!_isReadOnly)
                     {
-                        while (tabControl.TabPages.Count > 0)
-                        {
-                            RemoveTabAndDispose(tabControl.TabPages[0]);
-                        }
-                        LoadAllSheets();
+                        ReloadActiveSheets();
                         _statusManager?.UpdateStatus("Fogli ricaricati", Color.Green);
                     }
                 }
@@ -1235,9 +1355,8 @@ namespace GestioneCespiti
             if (_isReadOnly) return;
 
             var sheet = GetCurrentSheet();
-            if (sheet == null)
+            if (!EnsureSheetEditable(sheet))
             {
-                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1272,9 +1391,8 @@ namespace GestioneCespiti
             if (_isReadOnly) return;
 
             var sheet = GetCurrentSheet();
-            if (sheet == null)
+            if (!EnsureSheetEditable(sheet))
             {
-                MessageBox.Show("Nessun foglio selezionato.", "Attenzione", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1348,6 +1466,46 @@ namespace GestioneCespiti
                 CauseDismissioneOptions = new List<string>(settings.CauseDismissioneOptions ?? AppSettings.GetDefaultOptions()),
                 TipoAssetOptions = new List<string>(settings.TipoAssetOptions ?? new List<string>())
             };
+        }
+
+        private bool HasUnsavedChanges()
+        {
+            lock (_saveLock)
+            {
+                return _dirtySheetVersions.Count > 0;
+            }
+        }
+
+        private int GetCurrentDirtyVersion(AssetSheet sheet)
+        {
+            lock (_saveLock)
+            {
+                return _dirtySheetVersions.TryGetValue(sheet, out int version) ? version : 0;
+            }
+        }
+
+        private void ForgetSheetState(AssetSheet sheet)
+        {
+            lock (_saveLock)
+            {
+                _dirtySheetVersions.Remove(sheet);
+                _pendingAutoSaveSheets.Remove(sheet);
+            }
+        }
+
+        private bool TryMarkSheetClean(AssetSheet sheet, int savedVersion)
+        {
+            lock (_saveLock)
+            {
+                if (_dirtySheetVersions.TryGetValue(sheet, out int currentVersion) && currentVersion == savedVersion)
+                {
+                    _dirtySheetVersions.Remove(sheet);
+                    _pendingAutoSaveSheets.Remove(sheet);
+                    return true;
+                }
+
+                return false;
+            }
         }
     }
 }

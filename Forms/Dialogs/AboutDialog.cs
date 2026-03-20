@@ -8,29 +8,23 @@ namespace GestioneCespiti.Forms.Dialogs
 {
     public class AboutDialog : Form
     {
+        private const string DefaultAuthor = "Danny Perondi";
+        private const string DefaultProjectName = "OnlyCespiti";
+        private const string DefaultProductName = "GestioneCespiti - Dismissioni";
+
         public AboutDialog()
         {
-            const string defaultGithubUsername = "dennidalpos";
-            const string defaultProjectUrl = "https://github.com/dennidalpos/OnlyCespiti";
-
             var assembly = Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
-            var productName = "GestioneCespiti - Dismissioni";
-            var githubUsername = Environment.GetEnvironmentVariable("GITHUB_USERNAME");
             var projectUrl = Environment.GetEnvironmentVariable("GITHUB_PROJECT_URL");
+            var author = Environment.GetEnvironmentVariable("PROJECT_AUTHOR");
 
-            if (string.IsNullOrWhiteSpace(githubUsername))
+            if (string.IsNullOrWhiteSpace(author))
             {
-                githubUsername = defaultGithubUsername;
+                author = DefaultAuthor;
             }
 
-            if (string.IsNullOrWhiteSpace(projectUrl))
-            {
-                projectUrl = githubUsername != defaultGithubUsername
-                    ? $"https://github.com/{githubUsername}/OnlyCespiti"
-                    : defaultProjectUrl;
-            }
-            var company = $"Sviluppato da {githubUsername}";
+            var company = $"Sviluppato da {author}";
             var copyright = $"© {DateTime.Now.Year} - Tutti i diritti riservati";
 
             Text = "Informazioni su";
@@ -51,7 +45,7 @@ namespace GestioneCespiti.Forms.Dialogs
 
             var titleLabel = new Label
             {
-                Text = productName,
+                Text = DefaultProductName,
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 Location = new Point(20, 110),
                 Size = new Size(ClientSize.Width - 40, 30),
@@ -77,9 +71,11 @@ namespace GestioneCespiti.Forms.Dialogs
                 TextAlign = ContentAlignment.MiddleCenter
             };
 
-            var githubLink = new LinkLabel
+            var repositoryLabel = new LinkLabel
             {
-                Text = projectUrl,
+                Text = string.IsNullOrWhiteSpace(projectUrl)
+                    ? $"Repository: {DefaultProjectName}"
+                    : projectUrl,
                 Font = new Font("Segoe UI", 9, FontStyle.Underline),
                 Location = new Point(20, 200),
                 Size = new Size(ClientSize.Width - 40, 20),
@@ -87,23 +83,33 @@ namespace GestioneCespiti.Forms.Dialogs
                 LinkBehavior = LinkBehavior.HoverUnderline
             };
 
-            githubLink.Links.Add(0, projectUrl.Length, projectUrl);
-            githubLink.LinkClicked += (s, e) =>
+            if (!string.IsNullOrWhiteSpace(projectUrl))
             {
-                try
+                repositoryLabel.Links.Add(0, projectUrl.Length, projectUrl);
+                repositoryLabel.LinkClicked += (s, e) =>
                 {
-                    Process.Start(new ProcessStartInfo
+                    try
                     {
-                        FileName = projectUrl,
-                        UseShellExecute = true
-                    });
-                }
-                catch
-                {
-                    Clipboard.SetText(projectUrl);
-                    MessageBox.Show("Link copiato negli appunti", "Informazioni", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-            };
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = projectUrl,
+                            UseShellExecute = true
+                        });
+                    }
+                    catch
+                    {
+                        Clipboard.SetText(projectUrl);
+                        MessageBox.Show("Link copiato negli appunti", "Informazioni", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                };
+            }
+            else
+            {
+                repositoryLabel.LinkBehavior = LinkBehavior.NeverUnderline;
+                repositoryLabel.LinkColor = Color.DimGray;
+                repositoryLabel.ActiveLinkColor = Color.DimGray;
+                repositoryLabel.VisitedLinkColor = Color.DimGray;
+            }
 
             var copyrightLabel = new Label
             {
@@ -140,7 +146,7 @@ namespace GestioneCespiti.Forms.Dialogs
                 titleLabel,
                 versionLabel,
                 companyLabel,
-                githubLink,
+                repositoryLabel,
                 copyrightLabel,
                 descriptionLabel,
                 btnOk

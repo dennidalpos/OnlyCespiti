@@ -183,7 +183,7 @@ namespace GestioneCespiti.Services
 
                 if (File.Exists(fullPath))
                 {
-                    string backupFile = fullPath + ".bak";
+                    string backupFile = GetBackupPath(fullPath);
                     File.Copy(fullPath, backupFile, true);
                 }
 
@@ -221,7 +221,7 @@ namespace GestioneCespiti.Services
 
                 if (File.Exists(filePath))
                 {
-                    string backupFile = filePath + ".bak";
+                    string backupFile = GetBackupPath(filePath);
                     File.Copy(filePath, backupFile, true);
                 }
 
@@ -250,15 +250,27 @@ namespace GestioneCespiti.Services
 
             string targetFolder = sheet.IsArchived ? _archivedFolder : _dataFolder;
             string filePath = PathValidator.ValidateAndGetSafePath(targetFolder, sheet.FileName);
+            string backupPath = GetBackupPath(filePath);
             
             try
             {
+                bool removedAny = false;
+
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);
+                    removedAny = true;
                     Logger.LogInfo($"Foglio eliminato: {sheet.Header} ({filePath})");
                 }
-                else
+
+                if (File.Exists(backupPath))
+                {
+                    File.Delete(backupPath);
+                    removedAny = true;
+                    Logger.LogInfo($"Backup foglio eliminato: {backupPath}");
+                }
+
+                if (!removedAny)
                 {
                     Logger.LogWarning($"Tentativo di eliminazione foglio inesistente: {filePath}");
                 }
@@ -276,6 +288,7 @@ namespace GestioneCespiti.Services
                 return;
 
             string sourcePath = PathValidator.ValidateAndGetSafePath(_dataFolder, sheet.FileName);
+            string sourceBackupPath = GetBackupPath(sourcePath);
 
             if (!File.Exists(sourcePath))
             {
@@ -286,9 +299,10 @@ namespace GestioneCespiti.Services
             try
             {
                 string destPath = GetUniqueFileName(_archivedFolder, sheet.FileName);
-                sheet.FileName = Path.GetFileName(destPath);
-
                 File.Move(sourcePath, destPath);
+                MoveBackupIfPresent(sourceBackupPath, GetBackupPath(destPath));
+
+                sheet.FileName = Path.GetFileName(destPath);
                 sheet.IsArchived = true;
                 Logger.LogInfo($"Foglio archiviato: {sheet.Header} -> {destPath}");
             }
@@ -305,6 +319,7 @@ namespace GestioneCespiti.Services
                 return;
 
             string sourcePath = PathValidator.ValidateAndGetSafePath(_archivedFolder, sheet.FileName);
+            string sourceBackupPath = GetBackupPath(sourcePath);
 
             if (!File.Exists(sourcePath))
             {
@@ -315,9 +330,10 @@ namespace GestioneCespiti.Services
             try
             {
                 string destPath = GetUniqueFileName(_dataFolder, sheet.FileName);
-                sheet.FileName = Path.GetFileName(destPath);
-
                 File.Move(sourcePath, destPath);
+                MoveBackupIfPresent(sourceBackupPath, GetBackupPath(destPath));
+
+                sheet.FileName = Path.GetFileName(destPath);
                 sheet.IsArchived = false;
                 Logger.LogInfo($"Foglio ripristinato: {sheet.Header} -> {destPath}");
             }
@@ -351,6 +367,19 @@ namespace GestioneCespiti.Services
             } while (File.Exists(destPath));
 
             return destPath;
+        }
+
+        private static string GetBackupPath(string filePath)
+        {
+            return filePath + ".bak";
+        }
+
+        private static void MoveBackupIfPresent(string sourceBackupPath, string destinationBackupPath)
+        {
+            if (!File.Exists(sourceBackupPath))
+                return;
+
+            File.Move(sourceBackupPath, destinationBackupPath, true);
         }
 
         private string CreateUniqueSheetFileName(string header, bool isArchived)

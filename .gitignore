@@ -1,6 +1,14 @@
 # Build results
+build/
 bin/
 obj/
+publish/
+dist/
+out/
+target/
+artifacts/
+TestResults/
+tmp/
 [Dd]ebug/
 [Rr]elease/
 x64/
@@ -13,6 +21,8 @@ bld/
 
 # Visual Studio
 .vs/
+.vscode/
+.idea/
 *.user
 *.suo
 *.userosscache
@@ -20,7 +30,6 @@ bld/
 
 # Application data
 data/
-!data/.gitkeep
 
 # Logs
 *.log

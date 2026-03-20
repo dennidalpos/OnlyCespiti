@@ -27,8 +27,10 @@ namespace GestioneCespiti.Managers
             _isReadOnly = isReadOnly;
         }
 
-        public void BindGridToSheet(DataGridView grid, AssetSheet sheet, AppSettings settings)
+        public void BindGridToSheet(DataGridView grid, AssetSheet sheet, AppSettings settings, bool forceReadOnly = false)
         {
+            bool isReadOnly = _isReadOnly || forceReadOnly || sheet.IsArchived;
+
             if (grid.DataSource is DataTable oldTable)
             {
                 grid.DataSource = null;
@@ -145,7 +147,7 @@ namespace GestioneCespiti.Managers
             grid.CellBeginEdit -= Grid_CellBeginEdit;
             grid.DataError -= Grid_DataError;
 
-            if (!_isReadOnly)
+            if (!isReadOnly)
             {
                 grid.CellValueChanged += Grid_CellValueChanged;
                 grid.CellClick += Grid_CellClick;
