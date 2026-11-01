@@ -4,7 +4,7 @@ Repository dell'applicazione desktop Windows Forms `GestioneCespiti`, usata per 
 
 Documentazione tecnica:
 - [PROJECT_SPEC.md](PROJECT_SPEC.md)
-- [PROJECT_STATUS.json](PROJECT_STATUS.json)
+- 02-areas/products/OnlyCespiti/tracker.json (nel dossier SecondBrain) (SecondBrain: `02-areas/products/OnlyCespiti/tracker.json`)
 - [LICENSE](LICENSE)
 
 ## Obiettivo del progetto
