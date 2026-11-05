@@ -1,36 +1,21 @@
-# OnlyCespiti
+# Product specification
 
-## Obiettivi
+[Retained Italian source](PROJECT_SPEC.it.md)
 
-- Mantenere un'app desktop Windows per la gestione di fogli di dismissione cespiti.
-- Consentire creazione, modifica, archiviazione, ricerca ed esportazione dei fogli.
-- Garantire persistenza locale affidabile dei dati JSON e export Excel.
+OnlyCespiti is the repository for the Windows Forms application/assembly GestioneCespiti, targeting net8.0-windows.
 
-## Architettura
+## Responsibilities
 
-- Applicazione Windows Forms .NET 8 (`GestioneCespiti.csproj`).
-- Entry point in `Program.cs` con avvio di `MainForm`.
-- UI e dialog in `Forms/`.
-- Coordinamento comportamento UI in `Managers/`.
-- Modello dominio in `Models/`.
-- Servizi infrastrutturali in `Services/`.
-- Utility condivise in `Utils/`.
-- Script di supporto build/clean in `Scripts/`.
-- Test automatici in `tests/`.
+Forms contains UI/dialogs; Managers coordinates grids/search/state; Models contains domain types; Services implements persistence, locking, export, settings and logging; Utils contains shared helpers. Program starts MainForm. Scripts supplies build/clean automation; tests covers selected services/managers.
 
-## Comportamento atteso
+## Current behavior
 
-- L'applicazione apre e gestisce più fogli locali serializzati in JSON.
-- Le modifiche alle celle vengono autosalvate con debounce e con meccanismi di backup.
-- La ricerca attraversa fogli attivi e, opzionalmente, archiviati.
-- I fogli archiviati aperti dalla ricerca sono consultabili in sola lettura fino a ripristino esplicito.
-- L'export in Excel produce file `.xlsx` dal foglio corrente.
-- Un lock applicativo impedisce modifiche concorrenti da più istanze.
-- In assenza di lock l'app resta consultabile in sola lettura.
+Users maintain multiple JSON asset-disposal sheets. Cells autosave with a two-second debounce and backup handling. Search spans active sheets and optionally archived ones. Archived search results stay read-only until explicitly restored. Excel export writes the current sheet to .xlsx.
 
-## Vincoli
+An application lock prevents concurrent editing; without it the app remains readable in read-only mode. There is no remote backend. Runtime data normally lives beside the executable, and a user-selected shared directory is a separate environmental case.
 
-- Stack target: Windows 10/11 e .NET 8 con Windows Forms.
-- Il repository si chiama `OnlyCespiti`, mentre nome assembly/applicazione resta `GestioneCespiti`.
-- La persistenza prevista è locale su file; non è definito alcun backend remoto.
-- Gli script di clean devono riportare la repo a uno stato locale pulito senza toccare i file versionati.
+## Operational limits
+
+Windows 10/11 and compatible .NET SDK/runtime are required. Scripts/build.ps1 cleans by default; Scripts/clean.ps1 recursively includes data and backup/log files in its deletion scope. This is not a safe default for a checkout containing real data or retained evidence. Preserve data and use NoClean when building without an explicitly approved cleanup.
+
+A successful service test does not qualify native UI, actual Excel software or multi-host shared-folder behavior. See the [English guide](docs/GUIDE.md) and retained [Italian guide](docs/GUIDE.it.md). No code or tracker status is changed by a documentation audit.

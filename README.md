@@ -15,7 +15,7 @@ Windows Forms desktop app (`GestioneCespiti`) to manage asset disposal sheets. S
 ## Requirements
 
 - Windows 10/11
-- .NET SDK 8.0 to build
+- A compatible .NET SDK targeting `net8.0-windows` to build
 - PowerShell 7+ recommended for the build scripts
 
 ## Build and run
@@ -35,10 +35,10 @@ dotnet test GestioneCespiti.sln -c Release
 Produce a publish folder (win-x64, self-contained single file by default):
 
 ```powershell
-./Scripts/build.ps1 -PublishMode SelfContained
+./Scripts/build.ps1 -NoClean -PublishMode SelfContained
 ```
 
-`./Scripts/clean.ps1` removes build output, IDE caches and local runtime data.
+The build script cleans by default unless `-NoClean` is supplied. `Scripts/clean.ps1` recursively includes `data/`, backup/log files and build/IDE output. Do not run it on a checkout containing personal sheets or retained evidence without a separately reviewed cleanup scope.
 
 ## Repository layout
 
@@ -54,7 +54,7 @@ The repository is named `OnlyCespiti`; the .NET project and assembly keep the na
 
 ## Documentation
 
-The detailed guide is written in Italian: [docs/GUIDE.it.md](docs/GUIDE.it.md). See also [PROJECT_SPEC.md](PROJECT_SPEC.md).
+Read the [English user/developer guide](docs/GUIDE.md), the retained [Italian guide](docs/GUIDE.it.md) and [English specification](PROJECT_SPEC.md).
 
 ## Security
 
