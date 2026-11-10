@@ -1,0 +1,48 @@
+# Build results
+build/
+bin/
+obj/
+publish/
+dist/
+out/
+target/
+artifacts/
+TestResults/
+tmp/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Application data
+data/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+packages/
+
+# OS files
+.DS_Store
+Thumbs.db
